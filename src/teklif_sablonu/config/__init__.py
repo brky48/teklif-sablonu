@@ -1,0 +1,39 @@
+"""config paketi — Uygulama yapılandırması yükleme."""
+
+from teklif_sablonu.config.settings import (
+    AppConfig,
+    CompanyInfo,
+    SectionDefault,
+    load_app_config,
+    load_companies,
+    load_section_defaults,
+    get_user_data_dir,
+    get_db_path,
+    APP_NAME,
+    APP_AUTHOR,
+    DB_FILENAME,
+    RECIPIENT_MAX_CHARS,
+    ASSETS_DIR,
+    FONTS_DIR,
+    BRANDS_DIR,
+    COMPANIES_DIR,
+)
+
+__all__ = [
+    "AppConfig",
+    "CompanyInfo",
+    "SectionDefault",
+    "load_app_config",
+    "load_companies",
+    "load_section_defaults",
+    "get_user_data_dir",
+    "get_db_path",
+    "APP_NAME",
+    "APP_AUTHOR",
+    "DB_FILENAME",
+    "RECIPIENT_MAX_CHARS",
+    "ASSETS_DIR",
+    "FONTS_DIR",
+    "BRANDS_DIR",
+    "COMPANIES_DIR",
+]

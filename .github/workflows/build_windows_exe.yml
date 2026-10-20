@@ -1,0 +1,52 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Kaynak Kodunu Çek
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Bağımlılıkları Yükle
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Tüm Testleri Çalıştır
+        run: |
+          pytest -v
+
+      - name: PyInstaller ile Windows .exe Derle
+        run: |
+          pyinstaller --clean teklif_sablonu.spec
+
+      - name: Üretilen .exe Dosyasını Doğrula
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist\TeklifSablonu.exe")) {
+            throw "dist\TeklifSablonu.exe bulunamadı!"
+          }
+          $size = (Get-Item "dist\TeklifSablonu.exe").Length
+          Write-Host "TeklifSablonu.exe boyutu: $size bayt"
+
+      - name: Windows .EXE Dosyasını Kaydet (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeklifSablonu-Windows-x64
+          path: dist/TeklifSablonu.exe
+          if-no-files-found: error

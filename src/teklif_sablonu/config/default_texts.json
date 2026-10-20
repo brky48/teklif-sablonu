@@ -1,0 +1,35 @@
+{
+  "sections": {
+    "delivery_address": {
+      "label": "Teslimat Adresi",
+      "default_text": "Tek bir merkezi noktaya Adres Teslimdir.",
+      "max_chars": 3000
+    },
+    "order_notification": {
+      "label": "Sipariş Bildirimi",
+      "default_text": "Sipariş 15 gün önceden bildirilmelidir. Teklif geçerlilik süresi 7 gündür.",
+      "max_chars": 3000
+    },
+    "delivery_method": {
+      "label": "Teslim Şekli",
+      "default_text": "Tek bir merkezi noktaya Adres Teslimdir.",
+      "max_chars": 3000
+    },
+    "payment_terms": {
+      "label": "Ödeme Şartları",
+      "default_text": "Nakit veya kredi kartı ile ödeme uygundur.",
+      "max_chars": 3000
+    },
+    "storage_conditions": {
+      "label": "Depolama Şartları",
+      "default_text": "",
+      "max_chars": 3000
+    },
+    "additional_notes": {
+      "label": "Ek Alan",
+      "default_text": "",
+      "max_chars": 10000,
+      "rich_text": true
+    }
+  }
+}

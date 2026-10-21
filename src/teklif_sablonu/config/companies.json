@@ -5,6 +5,7 @@
       "name": "Endemiks Tarım Ticaret A.Ş.",
       "display_name": "ENDEMİKS TARIM TİCARET A.Ş.",
       "address_label": "Merkez Ofis ve Fabrika",
+      "address_label_en": "Headquarters and Factory",
       "address_lines": [
         "Toparlar Mahallesi Ergüder",
         "Demir 7.Sokak No:11",
@@ -19,6 +20,7 @@
       "name": "Endemiks Gıda LTD. ŞTİ.",
       "display_name": "ENDEMİKS GIDA PAZARLAMA LİMİTED ŞİRKETİ",
       "address_label": "Merkez Ofis ve Fabrika",
+      "address_label_en": "Headquarters and Factory",
       "address_lines": [
         "Toparlar Mahallesi Ergüder",
         "Demir 7.Sokak No:11",

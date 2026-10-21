@@ -317,8 +317,9 @@ class PdfService:
         right_elements.append(Spacer(1, 6))
 
         # Şirket İletişim / Vergi Bilgileri
+        addr_label = getattr(company, "address_label_en", "Headquarters and Factory") if is_en else company.address_label
         lines = [
-            f"<b>{company.address_label}:</b>",
+            f"<b>{addr_label}:</b>",
             *company.address_lines,
             f"{company.tax_office}",
             f"{company.tax_id}",

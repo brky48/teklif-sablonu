@@ -85,6 +85,7 @@ class CompanyInfo:
     tax_office: str
     tax_id: str
     logo_path: str | None = None
+    address_label_en: str = "Headquarters and Factory"
 
     def has_placeholder(self) -> bool:
         """Şirket bilgilerinde TODO/placeholder var mı kontrol eder."""

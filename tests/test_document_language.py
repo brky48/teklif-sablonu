@@ -140,6 +140,8 @@ def test_pdf_flowables_and_generation_english(tmp_path: Path):
     assert "OFFER NO:" in header_cells_text
     assert "DATE:" in header_cells_text
     assert "TEKLİF NO:" not in header_cells_text
+    assert "Headquarters and Factory:" in header_cells_text
+    assert "Merkez Ofis ve Fabrika:" not in header_cells_text
 
     # 2. Items table flowables testi
     valid_items = offer.get_valid_items()

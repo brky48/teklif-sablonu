@@ -18,6 +18,8 @@ from teklif_sablonu.domain.enums import (
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    DocumentLanguage,
+    PageOrientation,
     QuantityUnit,
     SectionKey,
 )
@@ -33,18 +35,12 @@ def get_desktop_dir() -> Path:
     return Path.home()
 
 
+from teklif_sablonu.services.html_utils import qt_html_to_plain_text
+
+
 def strip_html_tags(text: str) -> str:
     """Ek alan veya zengin metindeki HTML etiketlerini temizler."""
-    if not text:
-        return ""
-    # <br> ve </p> etiketlerini yeni satıra dönüştür
-    text_clean = re.sub(r"(?i)<br\s*/?>", "\n", text)
-    text_clean = re.sub(r"(?i)</p>", "\n", text_clean)
-    # Kalan tüm HTML etiketlerini kaldır
-    text_clean = re.sub(r"<[^>]+>", "", text_clean)
-    # Fazla ardışık boş satırları toparla
-    text_clean = re.sub(r"\n{3,}", "\n\n", text_clean)
-    return text_clean.strip()
+    return qt_html_to_plain_text(text)
 
 
 class ExcelService:
@@ -141,17 +137,23 @@ class ExcelService:
         valid_items = [it for it in offer.items if not it.is_empty()]
         _, offer_totals = calculate_offer(offer)
         visible_cols = self.filter_visible_columns(offer, valid_items)
+        is_en = offer.document_language == DocumentLanguage.EN
 
         # 2. Workbook ve Worksheet başlat
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Teklif Formu"
+        ws.title = "PRICE QUOTATION" if is_en else "Teklif Formu"
 
-        # Sayfa Yönü: 7 veya daha az sütun Dikey, 8+ sütun Yatay
-        if len(visible_cols) <= 7:
-            ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
+        # Sayfa Yönü: Kullanıcı tercihi veya sütun sayısına göre (7 veya daha az sütun Dikey, 8+ sütun Yatay)
+        is_landscape = False
+        if offer.page_orientation == PageOrientation.LANDSCAPE or offer.page_orientation == "landscape":
+            is_landscape = True
+        elif offer.page_orientation == PageOrientation.PORTRAIT or offer.page_orientation == "portrait":
+            is_landscape = False
         else:
-            ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+            is_landscape = len(visible_cols) > 7
+
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE if is_landscape else ws.ORIENTATION_PORTRAIT
         ws.page_setup.paperSize = ws.PAPERSIZE_A4
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.fitToWidth = 1
@@ -182,16 +184,16 @@ class ExcelService:
 
         # Sağ Taraf: Teklif Numarası ve Tarihi (Tablonun son sütununa hizalı)
         right_col = max(len(visible_cols) + 1, 6)
-        ws.cell(row=2, column=right_col - 1, value="TEKLİF NO:").font = bold_font
+        ws.cell(row=2, column=right_col - 1, value="OFFER NO:" if is_en else "TEKLİF NO:").font = bold_font
         ws.cell(row=2, column=right_col - 1).alignment = Alignment(horizontal="right")
         ws.cell(row=2, column=right_col, value=offer.offer_number or "—").font = bold_font
 
-        ws.cell(row=3, column=right_col - 1, value="TARİH:").font = bold_font
+        ws.cell(row=3, column=right_col - 1, value="DATE:" if is_en else "TARİH:").font = bold_font
         ws.cell(row=3, column=right_col - 1).alignment = Alignment(horizontal="right")
         date_str = offer.offer_date.strftime("%d.%m.%Y") if offer.offer_date else "—"
         ws.cell(row=3, column=right_col, value=date_str).font = regular_font
 
-        ws.cell(row=4, column=right_col - 1, value="PARA BİRİMİ:").font = muted_font
+        ws.cell(row=4, column=right_col - 1, value="CURRENCY:" if is_en else "PARA BİRİMİ:").font = muted_font
         ws.cell(row=4, column=right_col - 1).alignment = Alignment(horizontal="right")
         ws.cell(row=4, column=right_col, value=offer.currency_code.value).font = muted_font
 
@@ -209,7 +211,7 @@ class ExcelService:
 
         # 4. Müşteri (Alıcı) Bilgileri
         client_row = max(current_meta_row + 1, 7)
-        ws.cell(row=client_row, column=2, value="Sayın / Firma:").font = bold_font
+        ws.cell(row=client_row, column=2, value="Customer / Company:" if is_en else "Sayın / Firma:").font = bold_font
         ws.cell(row=client_row, column=3, value=offer.recipient_name).font = Font(name="Calibri", size=11, bold=True)
 
         # 5. Ürün Tablosu Başlık Satırı
@@ -276,9 +278,9 @@ class ExcelService:
                 elif col_key == ColumnKey.DISCOUNT_TYPE:
                     if offer.discount_enabled:
                         if item.discount_type == DiscountType.RATE:
-                            cell.value = "Oran"
+                            cell.value = "Rate" if is_en else "Oran"
                         elif item.discount_type == DiscountType.AMOUNT:
-                            cell.value = "Miktar"
+                            cell.value = "Amount" if is_en else "Miktar"
                         else:
                             cell.value = "—"
                     cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -352,7 +354,8 @@ class ExcelService:
         totals_fill = PatternFill(start_color=self.ACCENT_BG, end_color=self.ACCENT_BG, fill_type="solid")
 
         # 7.1 Ara Toplam
-        ws.cell(row=summary_start_row, column=summary_lbl_idx, value="Ara Toplam:").font = bold_font
+        subtotal_lbl = "Subtotal:" if is_en else "Ara Toplam:"
+        ws.cell(row=summary_start_row, column=summary_lbl_idx, value=subtotal_lbl).font = bold_font
         ws.cell(row=summary_start_row, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
         ws.cell(row=summary_start_row, column=summary_lbl_idx).border = cell_border
         ws.cell(row=summary_start_row, column=summary_lbl_idx).fill = totals_fill
@@ -373,7 +376,8 @@ class ExcelService:
         # 7.2 İskonto Satırları (Etkinse)
         if offer.discount_enabled:
             # Toplam İskonto
-            ws.cell(row=current_summary_r, column=summary_lbl_idx, value="Toplam İskonto:").font = regular_font
+            disc_lbl = "Total Discount:" if is_en else "Toplam İskonto:"
+            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_lbl).font = regular_font
             ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
             ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
             ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
@@ -391,7 +395,8 @@ class ExcelService:
             current_summary_r += 1
 
             # İskonto Sonrası Ara Toplam
-            ws.cell(row=current_summary_r, column=summary_lbl_idx, value="İskonto Sonrası Ara Toplam:").font = bold_font
+            disc_sub_lbl = "Subtotal After Discount:" if is_en else "İskonto Sonrası Ara Toplam:"
+            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_sub_lbl).font = bold_font
             ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
             ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
             ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
@@ -417,7 +422,7 @@ class ExcelService:
         if offer.vat_enabled:
             # Toplam KDV
             vat_rate_str = f"{int(offer.vat_rate)}" if offer.vat_rate % 1 == 0 else f"{offer.vat_rate:g}"
-            vat_lbl = f"Toplam KDV (%{vat_rate_str}):"
+            vat_lbl = f"Total VAT (%{vat_rate_str}):" if is_en else f"Toplam KDV (%{vat_rate_str}):"
             ws.cell(row=current_summary_r, column=summary_lbl_idx, value=vat_lbl).font = regular_font
             ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
             ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
@@ -435,7 +440,11 @@ class ExcelService:
             current_summary_r += 1
 
         # 7.4 Genel Toplam (Büyük / Vurgulu)
-        grand_lbl = "KDV Dâhil Genel Toplam:" if offer.vat_enabled else "Genel Toplam:"
+        if offer.vat_enabled:
+            grand_lbl = "Grand Total (Incl. VAT):" if is_en else "KDV Dâhil Genel Toplam:"
+        else:
+            grand_lbl = "Grand Total:" if is_en else "Genel Toplam:"
+
         ws.cell(row=current_summary_r, column=summary_lbl_idx, value=grand_lbl).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
         ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
         ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
@@ -464,7 +473,8 @@ class ExcelService:
         active_sections = [s for s in offer.sections if s.enabled and s.text.strip()]
 
         if active_sections:
-            ws.cell(row=section_start_r, column=2, value="TEKLİF KOŞULLARI VE AÇIKLAMALAR").font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
+            terms_title = "OFFER TERMS AND CONDITIONS" if is_en else "TEKLİF KOŞULLARI VE AÇIKLAMALAR"
+            ws.cell(row=section_start_r, column=2, value=terms_title).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
             current_sec_r = section_start_r + 1
 
             for sec in active_sections:
@@ -473,21 +483,20 @@ class ExcelService:
                     continue
 
                 if sec.section_key == SectionKey.ADDITIONAL_NOTES:
-                    # Ek Alan: Etiketsiz
-                    cell = ws.cell(row=current_sec_r, column=2, value=sec_text)
-                    cell.font = regular_font
-                    cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                    # Kullanıcı şartı: Ek Alan için sabit başlık olmasın, doğrudan kullanıcının girdiği metin yer alsın
+                    val_cell = ws.cell(row=current_sec_r, column=2, value=sec_text)
+                    val_cell.font = regular_font
+                    val_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                    current_sec_r += 1
                 else:
-                    # Standart Koşullar: Kalın Etiket
-                    lbl_cell = ws.cell(row=current_sec_r, column=2, value=f"{sec.section_key.label_tr}:")
+                    lbl_cell = ws.cell(row=current_sec_r, column=2, value=f"{sec.section_key.label(offer.document_language)}:")
                     lbl_cell.font = bold_font
                     lbl_cell.alignment = Alignment(horizontal="left", vertical="top")
 
                     val_cell = ws.cell(row=current_sec_r, column=3, value=sec_text)
                     val_cell.font = regular_font
                     val_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-                current_sec_r += 1
+                    current_sec_r += 1
 
         # 9. Otomatik Sütun Genişliği Hesaplama
         for col_idx in range(2, last_col_idx + 1):
@@ -521,21 +530,37 @@ class ExcelService:
 
     def _get_column_header(self, key: ColumnKey, offer: Offer) -> str:
         """Sütun başlığı metnini teklif para ve miktar birimleriyle zenginleştirir."""
+        is_en = offer.document_language == DocumentLanguage.EN
         curr_sym = offer.currency_code.symbol
-        unit_val = offer.quantity_unit.label_tr
+        unit_val = offer.quantity_unit.label(offer.document_language)
         vat_rate_str = f"{int(offer.vat_rate)}" if offer.vat_rate % 1 == 0 else f"{offer.vat_rate:g}"
 
-        headers: dict[ColumnKey, str] = {
-            ColumnKey.PRODUCT_CODE: "Ürün Kodu",
-            ColumnKey.DESCRIPTION: "Ürün Açıklaması",
-            ColumnKey.QUANTITY: f"Miktar ({unit_val})",
-            ColumnKey.PALLET: "Palet",
-            ColumnKey.UNIT_PRICE: f"Birim Fiyat ({curr_sym})",
-            ColumnKey.DISCOUNT_TYPE: "İskonto Türü",
-            ColumnKey.DISCOUNT_AMOUNT: "İskonto Değeri",
-            ColumnKey.VAT: f"KDV (%{vat_rate_str})",
-            ColumnKey.TOTAL_AMOUNT: f"Toplam Tutar ({curr_sym})",
-            ColumnKey.TOTAL_DISCOUNTED: f"İskontolu Tutar ({curr_sym})",
-            ColumnKey.TOTAL_WITH_VAT: f"KDV Dahil ({curr_sym})",
-        }
-        return headers.get(key, key.label_tr)
+        if is_en:
+            headers: dict[ColumnKey, str] = {
+                ColumnKey.PRODUCT_CODE: "Product Code",
+                ColumnKey.DESCRIPTION: "Description",
+                ColumnKey.QUANTITY: f"Quantity ({unit_val})",
+                ColumnKey.PALLET: "Pallet",
+                ColumnKey.UNIT_PRICE: f"Unit Price ({curr_sym})",
+                ColumnKey.DISCOUNT_TYPE: "Discount Type",
+                ColumnKey.DISCOUNT_AMOUNT: "Discount Value",
+                ColumnKey.VAT: f"VAT (%{vat_rate_str})",
+                ColumnKey.TOTAL_AMOUNT: f"Total ({curr_sym})",
+                ColumnKey.TOTAL_DISCOUNTED: f"Discounted Total ({curr_sym})",
+                ColumnKey.TOTAL_WITH_VAT: f"Total Incl. VAT ({curr_sym})",
+            }
+        else:
+            headers = {
+                ColumnKey.PRODUCT_CODE: "Ürün Kodu",
+                ColumnKey.DESCRIPTION: "Ürün Açıklaması",
+                ColumnKey.QUANTITY: f"Miktar ({unit_val})",
+                ColumnKey.PALLET: "Palet",
+                ColumnKey.UNIT_PRICE: f"Birim Fiyat ({curr_sym})",
+                ColumnKey.DISCOUNT_TYPE: "İskonto Türü",
+                ColumnKey.DISCOUNT_AMOUNT: "İskonto Değeri",
+                ColumnKey.VAT: f"KDV (%{vat_rate_str})",
+                ColumnKey.TOTAL_AMOUNT: f"Toplam Tutar ({curr_sym})",
+                ColumnKey.TOTAL_DISCOUNTED: f"İskontolu Tutar ({curr_sym})",
+                ColumnKey.TOTAL_WITH_VAT: f"KDV Dahil ({curr_sym})",
+            }
+        return headers.get(key, key.label(offer.document_language))

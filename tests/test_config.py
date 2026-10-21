@@ -49,11 +49,13 @@ def test_load_companies() -> None:
     assert "334" in tarim.tax_id
     assert not tarim.has_placeholder()
 
-    # Endemiks Gıda - Eksik bilgiler uydurulmamış, TODO olmalı
+    # Endemiks Gıda - Gerçek şirket bilgileri girilmiş olmalı
     gida = next((c for c in companies if c.id == "endemiks_gida"), None)
     assert gida is not None
     assert gida.name == "Endemiks Gıda LTD. ŞTİ."
-    assert gida.has_placeholder()
+    assert not gida.has_placeholder()
+    assert gida.tax_id == "334 126 0377"
+    assert "KÖYCEĞİZ" in gida.tax_office
 
 
 def test_load_section_defaults() -> None:

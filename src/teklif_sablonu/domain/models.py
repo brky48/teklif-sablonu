@@ -11,6 +11,8 @@ from teklif_sablonu.domain.enums import (
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    DocumentLanguage,
+    PageOrientation,
     QuantityUnit,
     SectionKey,
 )
@@ -137,6 +139,8 @@ class Offer:
     vat_rate: Decimal = Decimal("0")
     discount_enabled: bool = False
     brand_logo_visible: bool = False
+    page_orientation: PageOrientation = PageOrientation.AUTO
+    document_language: DocumentLanguage = DocumentLanguage.TR
     selected_columns: list[ColumnKey] = field(default_factory=default_selected_columns)
     items: list[OfferItem] = field(default_factory=list)
     sections: list[OfferSection] = field(default_factory=list)

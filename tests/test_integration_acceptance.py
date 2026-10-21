@@ -526,7 +526,7 @@ def test_acceptance_ui_end_to_end_flow(
     # Yeni kopyayı kaydet -> Farklı bir numara almalı
     win.btn_save.click()
     assert win._current_offer_number != first_offer_number
-    assert win._current_offer_number == "20261020-002"
+    assert win._current_offer_number == f"{first_offer_number[:-3]}002"
 
     QApplication.processEvents()
     win.close()

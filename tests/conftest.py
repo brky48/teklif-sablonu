@@ -52,7 +52,7 @@ def prevent_gui_deadlock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         QFileDialog,
         "getSaveFileName",
-        lambda *args, **kwargs: ("/tmp/mock_file.pdf", "PDF"),
+        lambda *args, **kwargs: (str(args[2]) if len(args) > 2 and args[2] else "/tmp/mock_file.pdf", "PDF"),
     )
     monkeypatch.setattr(
         QFileDialog,

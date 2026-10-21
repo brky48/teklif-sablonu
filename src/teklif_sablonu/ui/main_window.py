@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -22,7 +23,13 @@ from PySide6.QtWidgets import (
 )
 
 from teklif_sablonu.domain.calculator import calculate_offer_totals
-from teklif_sablonu.domain.enums import ColumnKey, CurrencyCode, QuantityUnit
+from teklif_sablonu.domain.enums import (
+    ColumnKey,
+    CurrencyCode,
+    DocumentLanguage,
+    PageOrientation,
+    QuantityUnit,
+)
 from teklif_sablonu.domain.models import Offer, OfferItem
 from teklif_sablonu.domain.validators import ValidationResult, validate_offer
 from teklif_sablonu.services.excel_service import ExcelService
@@ -122,12 +129,12 @@ class MainWindow(QMainWindow):
 
         self.btn_export_pdf = QPushButton("📑 PDF Oluştur")
         self.btn_export_pdf.setProperty("class", "secondary")
-        self.btn_export_pdf.setToolTip("PDF dışa aktarma (Prompt 5'te etkinleştirilecek)")
+        self.btn_export_pdf.setToolTip("Teklif formunu PDF belgesi olarak kaydeder")
         self.btn_export_pdf.clicked.connect(self._on_export_pdf_clicked)
 
         self.btn_export_excel = QPushButton("📊 Excel Oluştur")
         self.btn_export_excel.setProperty("class", "secondary")
-        self.btn_export_excel.setToolTip("Excel dışa aktarma (Prompt 5'te etkinleştirilecek)")
+        self.btn_export_excel.setToolTip("Teklif formunu Excel çalışma kitabı olarak kaydeder")
         self.btn_export_excel.clicked.connect(self._on_export_excel_clicked)
 
         action_bar.addWidget(self.btn_new)
@@ -154,6 +161,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Hazır")
+
+        # Kalıcı Copyright Bilgisi (Madde 10)
+        self.copyright_lbl = QLabel("Geliştirici: Berkay Korkut | © 2026")
+        self.copyright_lbl.setStyleSheet("color: #718096; font-size: 11px; padding-right: 12px;")
+        self.status_bar.addPermanentWidget(self.copyright_lbl)
 
     def _connect_signals(self) -> None:
         """Bileşenler arası sinyal ve veri akışı bağlantıları."""
@@ -245,6 +257,8 @@ class MainWindow(QMainWindow):
             vat_rate=self.header_widget.get_vat_rate(),
             discount_enabled=self.header_widget.is_discount_enabled(),
             brand_logo_visible=self.header_widget.is_brand_logo_visible(),
+            page_orientation=self.header_widget.get_page_orientation(),
+            document_language=self.header_widget.get_document_language(),
             selected_columns=self.column_selector.get_selected_columns(),
             items=self.items_table.get_items(),
             sections=self.sections_widget.get_sections(),
@@ -266,6 +280,8 @@ class MainWindow(QMainWindow):
         self.header_widget.set_vat_rate(offer.vat_rate)
         self.header_widget.set_discount_enabled(offer.discount_enabled)
         self.header_widget.set_brand_logo_visible(offer.brand_logo_visible)
+        self.header_widget.set_page_orientation(offer.page_orientation)
+        self.header_widget.set_document_language(offer.document_language)
 
         self.column_selector.set_quantity_unit(offer.quantity_unit)
         self.column_selector.update_feature_dependencies(
@@ -299,6 +315,8 @@ class MainWindow(QMainWindow):
         self.header_widget.set_vat_rate(Decimal("20.00"))
         self.header_widget.set_discount_enabled(False)
         self.header_widget.set_brand_logo_visible(False)
+        self.header_widget.set_page_orientation(PageOrientation.AUTO)
+        self.header_widget.set_document_language(DocumentLanguage.TR)
 
         self.column_selector.set_quantity_unit(QuantityUnit.PIECE)
         self.column_selector.update_feature_dependencies(vat_enabled=False, discount_enabled=False)
@@ -411,29 +429,16 @@ class MainWindow(QMainWindow):
                 return
 
         offer = self.to_offer()
-        target_path = self.pdf_service.get_default_output_path(offer.offer_number)
-
-        # Dosya çakışma kontrolü (Bölüm 9.4)
-        if target_path.exists():
-            reply = QMessageBox.question(
-                self,
-                "Dosya Zaten Mevcut",
-                f"'{target_path.name}' Masaüstünde zaten mevcut.\n\nÜzerine yazılsın mı?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Cancel:
-                return
-            elif reply == QMessageBox.StandardButton.No:
-                custom_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "PDF Olarak Farklı Kaydet",
-                    str(target_path),
-                    "PDF Belgeleri (*.pdf)",
-                )
-                if not custom_path:
-                    return
-                target_path = Path(custom_path)
+        default_path = self.pdf_service.get_default_output_path(offer.offer_number)
+        custom_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "PDF Olarak Kaydet",
+            str(default_path),
+            "PDF Belgeleri (*.pdf)",
+        )
+        if not custom_path:
+            return
+        target_path = Path(custom_path)
 
         try:
             out_file = self.pdf_service.generate_pdf(offer, target_path)
@@ -464,29 +469,16 @@ class MainWindow(QMainWindow):
                 return
 
         offer = self.to_offer()
-        target_path = self.excel_service.get_default_output_path(offer.offer_number)
-
-        # Dosya çakışma kontrolü (Bölüm 10)
-        if target_path.exists():
-            reply = QMessageBox.question(
-                self,
-                "Dosya Zaten Mevcut",
-                f"'{target_path.name}' Masaüstünde zaten mevcut.\n\nÜzerine yazılsın mı?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Cancel:
-                return
-            elif reply == QMessageBox.StandardButton.No:
-                custom_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Excel Olarak Farklı Kaydet",
-                    str(target_path),
-                    "Excel Belgeleri (*.xlsx)",
-                )
-                if not custom_path:
-                    return
-                target_path = Path(custom_path)
+        default_path = self.excel_service.get_default_output_path(offer.offer_number)
+        custom_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Excel Olarak Kaydet",
+            str(default_path),
+            "Excel Çalışma Kitabı (*.xlsx)",
+        )
+        if not custom_path:
+            return
+        target_path = Path(custom_path)
 
         try:
             out_file = self.excel_service.generate_excel(offer, target_path)

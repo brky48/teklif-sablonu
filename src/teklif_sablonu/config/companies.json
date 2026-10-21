@@ -18,12 +18,14 @@
       "id": "endemiks_gida",
       "name": "Endemiks Gıda LTD. ŞTİ.",
       "display_name": "ENDEMİKS GIDA PAZARLAMA LİMİTED ŞİRKETİ",
-      "address_label": "TODO: Kullanıcı tarafından sağlanacak",
+      "address_label": "Merkez Ofis ve Fabrika",
       "address_lines": [
-        "TODO: Kullanıcı tarafından sağlanacak"
+        "Toparlar Mahallesi Ergüder",
+        "Demir 7.Sokak No:11",
+        "Köyceğiz/Muğla 48800"
       ],
-      "tax_office": "TODO: Kullanıcı tarafından sağlanacak",
-      "tax_id": "TODO: Kullanıcı tarafından sağlanacak",
+      "tax_office": "KÖYCEĞİZ V.D",
+      "tax_id": "334 126 0377",
       "logo_path": "endemiks_gida.png"
     }
   ]

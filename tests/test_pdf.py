@@ -10,9 +10,11 @@ import pytest
 from PySide6.QtPdf import QPdfDocument
 
 from teklif_sablonu.domain.enums import (
+    FIXED_COLUMN_ORDER,
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    PageOrientation,
     QuantityUnit,
     SectionKey,
 )
@@ -129,6 +131,54 @@ def test_pdf_generation_landscape(pdf_service: PdfService, tmp_path: Path) -> No
     assert abs(size.width() - 841.89) < 2
 
 
+def test_pdf_explicit_landscape_override(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Az sütunlu teklif kullanıcı tarafından Yatay seçildiyse Yatay oluşturulmalıdır."""
+    out_pdf = tmp_path / "test_forced_landscape.pdf"
+    offer = Offer(
+        page_orientation=PageOrientation.LANDSCAPE,
+        selected_columns=[
+            ColumnKey.DESCRIPTION,
+            ColumnKey.QUANTITY,
+            ColumnKey.UNIT_PRICE,
+            ColumnKey.TOTAL_AMOUNT,
+        ],
+        items=[OfferItem(description="Test", quantity=Decimal("1"), unit_price=Decimal("10"))],
+    )
+    result_path = pdf_service.generate_pdf(offer, out_pdf)
+    doc = QPdfDocument()
+    doc.load(str(result_path))
+    size = doc.pagePointSize(0)
+    assert size.width() > size.height()
+
+
+def test_pdf_explicit_portrait_override(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Çok sütunlu teklif kullanıcı tarafından Dikey seçildiyse Dikey oluşturulmalıdır."""
+    out_pdf = tmp_path / "test_forced_portrait.pdf"
+    offer = Offer(
+        page_orientation=PageOrientation.PORTRAIT,
+        vat_enabled=True,
+        vat_rate=Decimal("20.00"),
+        discount_enabled=True,
+        selected_columns=list(FIXED_COLUMN_ORDER),
+        items=[
+            OfferItem(
+                product_code="KOD1",
+                description="Test",
+                quantity=Decimal("1"),
+                pallet=Decimal("1"),
+                unit_price=Decimal("10"),
+                discount_type=DiscountType.RATE,
+                discount_value=Decimal("5"),
+            )
+        ],
+    )
+    result_path = pdf_service.generate_pdf(offer, out_pdf)
+    doc = QPdfDocument()
+    doc.load(str(result_path))
+    size = doc.pagePointSize(0)
+    assert size.width() < size.height()
+
+
 def test_pdf_multipage_pagination(pdf_service: PdfService, tmp_path: Path) -> None:
     """Çok sayıda ürün içeren teklif birden fazla sayfaya taşmalı ve sayfa numaraları yazılmalıdır."""
     out_pdf = tmp_path / "test_multipage.pdf"
@@ -180,6 +230,44 @@ def test_pdf_turkish_characters(pdf_service: PdfService, tmp_path: Path) -> None
                 section_key=SectionKey.ADDITIONAL_NOTES,
                 enabled=True,
                 text="<b>Önemli Not:</b> Ürünler <i>ışık almayan</i> serin yerde saklanmalıdır.",
+                rich_text=True,
+            )
+        ],
+    )
+
+    result_path = pdf_service.generate_pdf(offer, out_pdf)
+    assert result_path.exists()
+    assert result_path.stat().st_size > 1000
+
+
+def test_pdf_generation_with_full_qt_html_rich_text(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Qt QTextEdit.toHtml() tam HTML çıktısı (DOCTYPE, style, span) PDF üretimini çökertmemelidir."""
+    out_pdf = tmp_path / "test_qt_rich_text.pdf"
+
+    qt_html = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\\2610"; }
+li.checked::marker { content: "\\2612"; }
+</style></head><body style=" font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px;"><span style=" font-weight:700;">Önemli:</span> Bu teklif <span style=" font-style:italic;">15 gün</span> geçerlidir.</p>
+<ul style="margin-top: 0px; margin-bottom: 0px;">
+<li>Sevkiyat öncesi arayınız</li>
+<li>Ödeme peşindir</li>
+</ul>
+</body></html>"""
+
+    offer = Offer(
+        offer_number="20261021-099",
+        company_id="endemiks_tarim",
+        recipient_name="Test Müşteri",
+        items=[OfferItem(description="Test Ürün", quantity=Decimal("1"), unit_price=Decimal("100"))],
+        sections=[
+            OfferSection(
+                section_key=SectionKey.ADDITIONAL_NOTES,
+                enabled=True,
+                text=qt_html,
                 rich_text=True,
             )
         ],

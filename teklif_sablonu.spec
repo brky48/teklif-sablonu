@@ -102,6 +102,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,  # Konsol penceresi gizli (Saf GUI masaüstü uygulaması)
+    version=str(project_root / "version_info.txt"),
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

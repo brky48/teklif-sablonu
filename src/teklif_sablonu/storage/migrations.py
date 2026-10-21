@@ -68,7 +68,15 @@ MIGRATIONS: dict[int, str] = {
     CREATE INDEX IF NOT EXISTS idx_offers_recipient ON offers(recipient_name);
     CREATE INDEX IF NOT EXISTS idx_items_offer_id ON offer_items(offer_id);
     CREATE INDEX IF NOT EXISTS idx_sections_offer_id ON offer_sections(offer_id);
-    """
+    """,
+    2: """
+    -- Sayfa yönü seçimi: 'auto', 'portrait', 'landscape'
+    ALTER TABLE offers ADD COLUMN page_orientation TEXT NOT NULL DEFAULT 'auto';
+    """,
+    3: """
+    -- Belge dili seçimi: 'tr' veya 'en'
+    ALTER TABLE offers ADD COLUMN document_language TEXT NOT NULL DEFAULT 'tr';
+    """,
 }
 
 

@@ -13,10 +13,12 @@ from teklif_sablonu.domain.enums import (
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    PageOrientation,
     QuantityUnit,
     SectionKey,
 )
 from teklif_sablonu.domain.models import Offer, OfferItem, OfferSection
+from teklif_sablonu.services.offer_service import OfferService
 from teklif_sablonu.ui.archive_widget import ArchiveWidget
 from teklif_sablonu.ui.column_selector_widget import ColumnSelectorWidget
 from teklif_sablonu.ui.header_widget import HeaderWidget
@@ -384,6 +386,46 @@ def test_main_window_save_open_duplicate_flow(
     # 7. Dışa aktarım butonlarını çalıştır (PDF tmp_path altına üretilmeli)
     win.btn_export_pdf.click()
     win.btn_export_excel.click()
+
+    QApplication.processEvents()
+    win.close()
+
+
+def test_ui_page_orientation_and_copyright() -> None:
+    """Sayfa yönü seçimi, telif hakkı etiketi ve zengin metin araç çubuğu doğrulanmalıdır."""
+    import sqlite3
+    from teklif_sablonu.storage.repository import SqliteOfferRepository
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    service = OfferService(SqliteOfferRepository(conn))
+    win = MainWindow(offer_service=service)
+
+    # 1. Copyright etiketi kontrolü
+    assert hasattr(win, "copyright_lbl")
+    assert "Berkay Korkut" in win.copyright_lbl.text()
+
+    # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
+    assert win.header_widget.get_page_orientation() == PageOrientation.AUTO
+
+    win.header_widget.set_page_orientation(PageOrientation.LANDSCAPE)
+    assert win.header_widget.get_page_orientation() == PageOrientation.LANDSCAPE
+    offer = win.to_offer()
+    assert offer.page_orientation == PageOrientation.LANDSCAPE
+
+    win.header_widget.set_page_orientation(PageOrientation.PORTRAIT)
+    assert win.header_widget.get_page_orientation() == PageOrientation.PORTRAIT
+
+    # 3. Zengin metin araç çubuğu butonlarının varlığı ve stilleri
+    additional_notes_card = win.sections_widget._cards.get(SectionKey.ADDITIONAL_NOTES)
+    assert additional_notes_card is not None
+    assert additional_notes_card.is_rich_text is True
+    assert additional_notes_card.toolbar is not None
+    assert additional_notes_card.toolbar.btn_bold.property("class") == "toolbar"
+    assert additional_notes_card.toolbar.btn_italic.property("class") == "toolbar"
+    assert additional_notes_card.toolbar.btn_underline.property("class") == "toolbar"
+
+    # 4. Ürün tablosunun minimum yüksekliği
+    assert win.items_table.table.minimumHeight() >= 250
 
     QApplication.processEvents()
     win.close()

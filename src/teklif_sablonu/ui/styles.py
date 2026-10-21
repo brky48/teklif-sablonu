@@ -105,6 +105,26 @@ QPushButton.danger:hover {
     background-color: #C53030;
 }
 
+QPushButton.toolbar, QPushButton[class="toolbar"] {
+    background-color: #EDF2F7;
+    color: #2D3748;
+    border: 1px solid #CBD5E0;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    min-width: 24px;
+}
+
+QPushButton.toolbar:hover, QPushButton[class="toolbar"]:hover {
+    background-color: #E2E8F0;
+    color: #1A202C;
+    border-color: #A0AEC0;
+}
+
+QPushButton.toolbar:pressed, QPushButton[class="toolbar"]:pressed {
+    background-color: #CBD5E0;
+}
+
 /* Tablolar */
 QTableWidget {
     background-color: #FFFFFF;

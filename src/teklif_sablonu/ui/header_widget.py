@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 
 from teklif_sablonu.config import load_companies
 from teklif_sablonu.config.settings import RECIPIENT_MAX_CHARS
-from teklif_sablonu.domain.enums import CurrencyCode, QuantityUnit
+from teklif_sablonu.domain.enums import CurrencyCode, DocumentLanguage, PageOrientation, QuantityUnit
 
 
 class HeaderWidget(QWidget):
@@ -147,6 +147,23 @@ class HeaderWidget(QWidget):
         opts_layout.addStretch()
         grid.addLayout(opts_layout, 3, 3)
 
+        # 8. Sayfa Yönü (PDF & Excel: Otomatik / Dikey / Yatay)
+        grid.addWidget(QLabel("Sayfa Yönü:"), 4, 0)
+        self.orientation_combo = QComboBox()
+        self.orientation_combo.addItem("🔄 Otomatik (Sütun Sayısına Göre)", PageOrientation.AUTO.value)
+        self.orientation_combo.addItem("📐 Dikey (Portrait)", PageOrientation.PORTRAIT.value)
+        self.orientation_combo.addItem("📐 Yatay (Landscape)", PageOrientation.LANDSCAPE.value)
+        self.orientation_combo.currentIndexChanged.connect(self._on_changed)
+        grid.addWidget(self.orientation_combo, 4, 1)
+
+        # 9. Belge Dili (TR / EN)
+        grid.addWidget(QLabel("Belge Dili:"), 4, 2)
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem("TR", DocumentLanguage.TR.value)
+        self.lang_combo.addItem("EN", DocumentLanguage.EN.value)
+        self.lang_combo.currentIndexChanged.connect(self._on_changed)
+        grid.addWidget(self.lang_combo, 4, 3)
+
         main_layout.addWidget(group)
 
     def _update_recipient_counter(self) -> None:
@@ -256,3 +273,33 @@ class HeaderWidget(QWidget):
 
     def set_brand_logo_visible(self, visible: bool) -> None:
         self.brand_logo_checkbox.setChecked(visible)
+
+    def get_page_orientation(self) -> PageOrientation:
+        data = self.orientation_combo.currentData()
+        try:
+            return PageOrientation(data)
+        except ValueError:
+            return PageOrientation.AUTO
+
+    def set_page_orientation(self, orientation: PageOrientation | str) -> None:
+        val = orientation.value if isinstance(orientation, PageOrientation) else str(orientation)
+        idx = self.orientation_combo.findData(val)
+        if idx >= 0:
+            self.orientation_combo.setCurrentIndex(idx)
+        else:
+            self.orientation_combo.setCurrentIndex(0)
+
+    def get_document_language(self) -> DocumentLanguage:
+        data = self.lang_combo.currentData()
+        try:
+            return DocumentLanguage(data)
+        except ValueError:
+            return DocumentLanguage.TR
+
+    def set_document_language(self, lang: DocumentLanguage | str) -> None:
+        val = lang.value if isinstance(lang, DocumentLanguage) else str(lang)
+        idx = self.lang_combo.findData(val)
+        if idx >= 0:
+            self.lang_combo.setCurrentIndex(idx)
+        else:
+            self.lang_combo.setCurrentIndex(0)

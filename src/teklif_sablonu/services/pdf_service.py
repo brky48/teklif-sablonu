@@ -32,16 +32,21 @@ from teklif_sablonu.domain.enums import (
     FIXED_COLUMN_ORDER,
     ColumnKey,
     DiscountType,
+    DocumentLanguage,
+    PageOrientation,
     SectionKey,
 )
 from teklif_sablonu.domain.models import Offer, OfferItem
 from teklif_sablonu.domain.parsers import format_decimal_tr
 from teklif_sablonu.domain.validators import validate_offer
+from teklif_sablonu.services.html_utils import qt_html_to_reportlab
 from teklif_sablonu.templates.pdf_styles import get_pdf_styles, register_turkish_fonts
 
 
 class NumberedCanvas(canvas.Canvas):
-    """Sayfa numarasını (Sayfa X / Y) hesaplayıp alt bilgiye yazan tuval."""
+    """Sayfa numarasını (Sayfa X / Y veya Page X / Y) hesaplayıp alt bilgiye yazan tuval."""
+
+    document_language: DocumentLanguage = DocumentLanguage.TR
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -66,8 +71,9 @@ class NumberedCanvas(canvas.Canvas):
         self.setFillColor(colors.HexColor("#718096"))
         page_w, _ = self._pagesize
 
-        # Sağ alt: Sayfa X / Y
-        footer_text = f"Sayfa {self._pageNumber} / {page_count}"
+        # Sağ alt: Sayfa X / Y veya Page X / Y
+        is_en = getattr(self, "document_language", DocumentLanguage.TR) == DocumentLanguage.EN
+        footer_text = f"Page {self._pageNumber} / {page_count}" if is_en else f"Sayfa {self._pageNumber} / {page_count}"
         self.drawRightString(page_w - 36, 18, footer_text)
         self.restoreState()
 
@@ -92,13 +98,26 @@ class PdfService:
         clean_num = offer_number or "Teklif"
         return get_desktop_dir() / f"{clean_num}.pdf"
 
-    def determine_page_orientation(self, visible_columns: list[ColumnKey]) -> tuple[Any, float]:
-        """Sütun sayısına ve genişlik gereksinimine göre Dikey veya Yatay A4 yönünü seçer.
+    def determine_page_orientation(
+        self,
+        visible_columns: list[ColumnKey],
+        offer: Offer | None = None,
+    ) -> tuple[Any, float]:
+        """Sütun sayısına veya kullanıcının seçtiği sayfa yönüne göre Dikey veya Yatay A4 yönünü seçer.
 
         Bölüm 9.2:
-        - 7 veya daha az sütun: Dikey A4 (Portrait, genişlik: 595.27 pt, yazılabilir alan: 523.27 pt).
-        - 8 veya daha fazla sütun (KDV, İskonto, Palet vb. açık): Yatay A4 (Landscape, genişlik: 841.89 pt).
+        - Kullanıcı tercihi 'portrait' ise: Daima Dikey A4
+        - Kullanıcı tercihi 'landscape' ise: Daima Yatay A4
+        - 'auto' (varsayılan):
+          - 7 veya daha az sütun: Dikey A4 (Portrait, genişlik: 595.27 pt, yazılabilir alan: 523.27 pt).
+          - 8 veya daha fazla sütun: Yatay A4 (Landscape, genişlik: 841.89 pt, yazılabilir alan: 769.89 pt).
         """
+        if offer is not None:
+            if offer.page_orientation == PageOrientation.PORTRAIT or offer.page_orientation == "portrait":
+                return A4, 595.27 - 72
+            elif offer.page_orientation == PageOrientation.LANDSCAPE or offer.page_orientation == "landscape":
+                return landscape(A4), 841.89 - 72
+
         if len(visible_columns) <= 7:
             return A4, 595.27 - 72  # 36pt sol/sağ marjin = 523.27 pt
         return landscape(A4), 841.89 - 72  # 769.89 pt
@@ -195,7 +214,7 @@ class PdfService:
 
         # 1. Sayfa Yönü ve Genişliği Belirle
         visible_cols = self.filter_visible_columns(offer, valid_items)
-        page_size, usable_width = self.determine_page_orientation(visible_cols)
+        page_size, usable_width = self.determine_page_orientation(visible_cols, offer=offer)
 
         doc = SimpleDocTemplate(
             str(output_path),
@@ -234,7 +253,10 @@ class PdfService:
         flowables.append(KeepTogether(signature_table))
 
         # PDF oluştur
-        doc.build(flowables, canvasmaker=NumberedCanvas)
+        class OfferNumberedCanvas(NumberedCanvas):
+            document_language = offer.document_language
+
+        doc.build(flowables, canvasmaker=OfferNumberedCanvas)
         return output_path
 
     def _build_header(self, offer: Offer, usable_width: float) -> Table:
@@ -268,12 +290,16 @@ class PdfService:
         right_elements: list[Any] = []
 
         # Kutular tablosu (Teklif No ve Tarih)
+        is_en = offer.document_language == DocumentLanguage.EN
+        lbl_offer_no = "OFFER NO:" if is_en else "TEKLİF NO:"
+        lbl_date = "DATE:" if is_en else "TARİH:"
+
         box_data = [
             [
-                Paragraph(f"<b>TEKLİF NO:</b> {offer.offer_number or '-'}", self.styles["BoxTitle"]),
+                Paragraph(f"<b>{lbl_offer_no}</b> {offer.offer_number or '-'}", self.styles["BoxTitle"]),
             ],
             [
-                Paragraph(f"<b>TARİH:</b> {offer.offer_date.strftime('%d.%m.%Y')}", self.styles["BoxTitle"]),
+                Paragraph(f"<b>{lbl_date}</b> {offer.offer_date.strftime('%d.%m.%Y')}", self.styles["BoxTitle"]),
             ],
         ]
         box_table = Table(box_data, colWidths=[200])
@@ -325,14 +351,15 @@ class PdfService:
     ) -> Table:
         """Ürünler tablosunu oluşturur (repeatRows=1 ile çok sayfada başlık tekrarı)."""
         col_widths = self.calculate_column_widths(columns, usable_width)
+        is_en = offer.document_language == DocumentLanguage.EN
 
         # 1. Başlık Satırı
         header_row = []
         for col in columns:
             if col == ColumnKey.QUANTITY:
-                title = offer.quantity_unit.column_header.upper()
+                title = offer.quantity_unit.get_column_header(offer.document_language).upper()
             else:
-                title = col.label_tr.upper()
+                title = col.label(offer.document_language).upper()
             header_row.append(Paragraph(f"<b>{title}</b>", self.styles["TableHeader"]))
 
         table_data = [header_row]
@@ -358,7 +385,7 @@ class PdfService:
                     val = format_decimal_tr(item.unit_price) + curr_sym
                     p = Paragraph(val, self.styles["TableCellRight"])
                 elif col == ColumnKey.DISCOUNT_TYPE:
-                    val = item.discount_type.label_tr if item.discount_type != DiscountType.NONE else "-"
+                    val = item.discount_type.label(offer.document_language) if item.discount_type != DiscountType.NONE else "-"
                     p = Paragraph(val, self.styles["TableCellCenter"])
                 elif col == ColumnKey.DISCOUNT_AMOUNT:
                     if item.discount_type == DiscountType.RATE:
@@ -404,40 +431,47 @@ class PdfService:
     def _build_totals_table(self, offer: Offer, totals: Any, usable_width: float) -> Table:
         """Genel toplam özetini sağa yaslı bir tablo olarak oluşturur."""
         curr_sym = f" {offer.currency_code.symbol}"
+        is_en = offer.document_language == DocumentLanguage.EN
         rows: list[list[Any]] = []
 
         # 1. Ara Toplam (Daima)
+        subtotal_lbl = "Subtotal:" if is_en else "Ara Toplam:"
         rows.append([
-            Paragraph("Ara Toplam:", self.styles["TotalsTitle"]),
+            Paragraph(subtotal_lbl, self.styles["TotalsTitle"]),
             Paragraph(format_decimal_tr(totals.subtotal) + curr_sym, self.styles["TotalsValue"]),
         ])
 
         # 2. İskonto
         if offer.discount_enabled:
+            disc_lbl = "Total Discount:" if is_en else "Toplam İskonto:"
+            disc_sub_lbl = "Subtotal After Discount:" if is_en else "İskonto Sonrası Ara Toplam:"
             rows.append([
-                Paragraph("Toplam İskonto:", self.styles["TotalsTitle"]),
+                Paragraph(disc_lbl, self.styles["TotalsTitle"]),
                 Paragraph(f"-{format_decimal_tr(totals.total_discount)}{curr_sym}", self.styles["TotalsValue"]),
             ])
             rows.append([
-                Paragraph("İskonto Sonrası Ara Toplam:", self.styles["TotalsTitle"]),
+                Paragraph(disc_sub_lbl, self.styles["TotalsTitle"]),
                 Paragraph(format_decimal_tr(totals.discounted_subtotal) + curr_sym, self.styles["TotalsValue"]),
             ])
 
         # 3. KDV
         if offer.vat_enabled:
             rate_str = format_decimal_tr(offer.vat_rate, decimal_places=0 if offer.vat_rate % 1 == 0 else 2)
+            vat_lbl = f"Total VAT (%{rate_str}):" if is_en else f"Toplam KDV (%{rate_str}):"
+            grand_vat_lbl = "<b>GRAND TOTAL (INCL. VAT):</b>" if is_en else "<b>KDV DÂHİL GENEL TOPLAM:</b>"
             rows.append([
-                Paragraph(f"Toplam KDV (%{rate_str}):", self.styles["TotalsTitle"]),
+                Paragraph(vat_lbl, self.styles["TotalsTitle"]),
                 Paragraph(format_decimal_tr(totals.total_vat) + curr_sym, self.styles["TotalsValue"]),
             ])
             rows.append([
-                Paragraph("<b>KDV DÂHİL GENEL TOPLAM:</b>", self.styles["GrandTotalTitle"]),
+                Paragraph(grand_vat_lbl, self.styles["GrandTotalTitle"]),
                 Paragraph(f"<b>{format_decimal_tr(totals.grand_total)}{curr_sym}</b>", self.styles["GrandTotalValue"]),
             ])
         else:
             final_total = totals.discounted_subtotal if offer.discount_enabled else totals.subtotal
+            grand_lbl = "<b>GRAND TOTAL:</b>" if is_en else "<b>GENEL TOPLAM:</b>"
             rows.append([
-                Paragraph("<b>GENEL TOPLAM:</b>", self.styles["GrandTotalTitle"]),
+                Paragraph(grand_lbl, self.styles["GrandTotalTitle"]),
                 Paragraph(f"<b>{format_decimal_tr(final_total)}{curr_sym}</b>", self.styles["GrandTotalValue"]),
             ])
 
@@ -471,21 +505,24 @@ class PdfService:
         return wrapper
 
     def _build_conditions(self, offer: Offer, usable_width: float) -> KeepTogether | None:
-        """Etkin ticari koşul bölümlerini referans tasarımdaki gibi 2 sütunlu tablo olarak hazırlar."""
+        """Etkin ticari koşul bölümlerini ve başlıksız tam genişlikli ek alan kutusunu hazırlar."""
         elements: list[Any] = []
         table_rows: list[list[Any]] = []
-        rich_notes: str | None = None
+        add_notes_html: str | None = None
 
         for sec in offer.sections:
             if not sec.enabled or not sec.text or not sec.text.strip():
                 continue
 
             if sec.section_key == SectionKey.ADDITIONAL_NOTES:
-                # Ek Alan: Etiketsiz tam genişlikte gösterilir (Bölüm 7.6)
-                rich_notes = sec.text.strip()
+                # Kullanıcı şartı: Ek Alan içinde sabit başlık/yorum olmamalı, sadece girilen zengin metin yer almalı.
+                clean_html = qt_html_to_reportlab(sec.text.strip())
+                if clean_html:
+                    add_notes_html = clean_html
             else:
+                label_text = sec.section_key.label(offer.document_language)
                 table_rows.append([
-                    Paragraph(f"<b>{sec.section_key.label_tr}:</b>", self.styles["ConditionLabel"]),
+                    Paragraph(f"<b>{label_text}:</b>", self.styles["ConditionLabel"]),
                     Paragraph(sec.text.strip(), self.styles["ConditionText"]),
                 ])
 
@@ -498,6 +535,7 @@ class PdfService:
                     ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1A202C")),
                     ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
                     ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F7FAFC")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 4),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                     ("LEFTPADDING", (0, 0), (-1, -1), 6),
@@ -506,14 +544,23 @@ class PdfService:
             )
             elements.append(cond_table)
 
-        if rich_notes:
-            if elements:
-                elements.append(Spacer(1, 6))
-            # ReportLab için <br> ve </br> etiketlerini geçerli <br/> etiketine normalize et
-            import re
-            clean_html = re.sub(r"(?i)<br\s*/?>", "<br/>", rich_notes)
-            clean_html = clean_html.replace("\n", "<br/>")
-            elements.append(Paragraph(clean_html, self.styles["ConditionText"]))
+        # Ek Alan kutusu (Sabit başlıksız, sadece kullanıcının girdiği metin, tam genişlikte kenarlıklı kutu)
+        if add_notes_html:
+            if table_rows:
+                elements.append(Spacer(1, 4))
+            notes_table = Table([[Paragraph(add_notes_html, self.styles["ConditionText"])]], colWidths=[usable_width])
+            notes_table.setStyle(
+                TableStyle([
+                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1A202C")),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFFFFF")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ])
+            )
+            elements.append(notes_table)
 
         if not elements:
             return None
@@ -523,12 +570,14 @@ class PdfService:
         """Referans PDF'teki 2 kutulu imza ve onay alanını oluşturur."""
         companies = load_companies()
         company = next((c for c in companies if c.id == offer.company_id), companies[0])
+        is_en = offer.document_language == DocumentLanguage.EN
 
         box_w = (usable_width - 20) / 2.0
         box_h = 75
 
         # Sol Kutu: Alıcı / Müşteri
-        recipient_title = offer.recipient_name or "MÜŞTERİ ONAY / İMZA"
+        default_recipient = "CUSTOMER APPROVAL / SIGNATURE" if is_en else "MÜŞTERİ ONAY / İMZA"
+        recipient_title = offer.recipient_name or default_recipient
         left_content = [
             Paragraph(f"<b>{recipient_title.upper()}</b>", self.styles["SignatureTitle"]),
             Spacer(1, box_h - 22),

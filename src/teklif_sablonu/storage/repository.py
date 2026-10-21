@@ -12,6 +12,8 @@ from teklif_sablonu.domain.enums import (
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    DocumentLanguage,
+    PageOrientation,
     QuantityUnit,
     SectionKey,
 )
@@ -118,9 +120,9 @@ class SqliteOfferRepository(OfferRepository):
                         INSERT INTO offers (
                             offer_number, offer_date, company_id, recipient_name,
                             currency_code, quantity_unit, vat_enabled, vat_rate,
-                            discount_enabled, brand_logo_visible, selected_columns,
+                            discount_enabled, brand_logo_visible, page_orientation, document_language, selected_columns,
                             source_offer_id, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             offer_number,
@@ -133,6 +135,8 @@ class SqliteOfferRepository(OfferRepository):
                             str(offer.vat_rate),
                             1 if offer.discount_enabled else 0,
                             1 if offer.brand_logo_visible else 0,
+                            offer.page_orientation.value,
+                            offer.document_language.value,
                             sel_cols_json,
                             offer.source_offer_id,
                             now_iso,
@@ -160,6 +164,8 @@ class SqliteOfferRepository(OfferRepository):
                             vat_rate = ?,
                             discount_enabled = ?,
                             brand_logo_visible = ?,
+                            page_orientation = ?,
+                            document_language = ?,
                             selected_columns = ?,
                             updated_at = ?
                         WHERE id = ?
@@ -174,6 +180,8 @@ class SqliteOfferRepository(OfferRepository):
                             str(offer.vat_rate),
                             1 if offer.discount_enabled else 0,
                             1 if offer.brand_logo_visible else 0,
+                            offer.page_orientation.value,
+                            offer.document_language.value,
                             sel_cols_json,
                             now_iso,
                             offer.id,
@@ -346,6 +354,20 @@ class SqliteOfferRepository(OfferRepository):
         except (json.JSONDecodeError, ValueError):
             selected_columns = []
 
+        # Sayfa yönü
+        page_orientation_raw = row["page_orientation"] if "page_orientation" in row.keys() else "auto"
+        try:
+            page_orientation = PageOrientation(page_orientation_raw)
+        except ValueError:
+            page_orientation = PageOrientation.AUTO
+
+        # Belge dili
+        document_language_raw = row["document_language"] if "document_language" in row.keys() else "tr"
+        try:
+            document_language = DocumentLanguage(document_language_raw)
+        except ValueError:
+            document_language = DocumentLanguage.TR
+
         return Offer(
             id=offer_id,
             offer_number=row["offer_number"],
@@ -358,6 +380,8 @@ class SqliteOfferRepository(OfferRepository):
             vat_rate=Decimal(row["vat_rate"]),
             discount_enabled=bool(row["discount_enabled"]),
             brand_logo_visible=bool(row["brand_logo_visible"]),
+            page_orientation=page_orientation,
+            document_language=document_language,
             selected_columns=selected_columns,
             items=items,
             sections=sections,

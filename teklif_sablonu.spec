@@ -25,7 +25,7 @@ package_dir = src_dir / "teklif_sablonu"
 
 # Gömülecek veri dosyaları (assets ve config)
 datas = [
-    (str(package_dir / "config" / "*.json"), "teklif_sablonu/config"),
+    (str(package_dir / "config"), "teklif_sablonu/config"),
     (str(package_dir / "assets"), "teklif_sablonu/assets"),
 ]
 
@@ -86,26 +86,82 @@ pyz = PYZ(
     cipher=block_cipher,
 )
 
-# Tek dosya (.exe) dağıtımı
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name="TeklifSablonu",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # Konsol penceresi gizli (Saf GUI masaüstü uygulaması)
-    version=str(project_root / "version_info.txt"),
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
+is_windows = sys.platform.startswith("win")
+is_macos = sys.platform == "darwin"
+
+win_icon = project_root / "src" / "teklif_sablonu" / "assets" / "app_icon.ico"
+mac_icon = project_root / "src" / "teklif_sablonu" / "assets" / "app_icon.icns"
+
+# macOS için onedir BUNDLE, Windows için tek dosya EXE
+if is_macos:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="TeklifSablonu",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name="TeklifSablonu",
+    )
+    app = BUNDLE(
+        coll,
+        name="TeklifSablonu.app",
+        icon=str(mac_icon) if mac_icon.exists() else None,
+        bundle_identifier="com.endemiks.teklifsablonu",
+        info_plist={
+            "CFBundleDisplayName": "Teklif Şablonu",
+            "CFBundleName": "TeklifSablonu",
+            "CFBundleIdentifier": "com.endemiks.teklifsablonu",
+            "CFBundleVersion": "1.1.0",
+            "CFBundleShortVersionString": "1.1.0",
+            "CFBundlePackageType": "APPL",
+            "NSHighResolutionCapable": True,
+            "NSRequiresAquaSystemAppearance": False,
+            "LSMinimumSystemVersion": "11.0",
+        },
+    )
+else:
+    # Windows: Tek dosya bağımsız .exe
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name="TeklifSablonu",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        icon=str(win_icon) if win_icon.exists() else None,
+        version=str(project_root / "version_info.txt") if (project_root / "version_info.txt").exists() else None,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+
+

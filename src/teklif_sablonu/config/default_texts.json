@@ -2,7 +2,7 @@
   "sections": {
     "delivery_address": {
       "label": "Teslimat Adresi",
-      "default_text": "Tek bir merkezi noktaya Adres Teslimdir.",
+      "default_text": "",
       "max_chars": 3000
     },
     "order_notification": {
@@ -12,7 +12,7 @@
     },
     "delivery_method": {
       "label": "Teslim Şekli",
-      "default_text": "Tek bir merkezi noktaya Adres Teslimdir.",
+      "default_text": "Tek bir merkezi noktaya adres teslimdir.",
       "max_chars": 3000
     },
     "payment_terms": {

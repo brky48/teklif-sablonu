@@ -21,9 +21,10 @@ teklif_sablonu/
 │       ├── assets/        # Şirket ve marka logoları, Türkçe TrueType fontlar (DejaVuSans)
 │       ├── app.py         # QApplication fabrikası ve küresel olay döngüsü yapılandırması
 │       └── main.py        # CLI ve masaüstü uygulama giriş noktası
-├── tests/                 # 82 adet kapsamlı pytest birim, entegrasyon ve kabul testi
+├── tests/                 # 95 adet kapsamlı pytest birim, entegrasyon ve kabul testi
 ├── pyproject.toml         # Proje yapılandırması, Python 3.11+ bağımlılıkları ve pytest ayarları
-├── teklif_sablonu.spec    # PyInstaller Windows .exe paketleme yapılandırması
+├── teklif_sablonu.spec    # PyInstaller Windows .exe ve macOS .app paketleme yapılandırması
+├── build_macos.sh         # macOS tek tıkla .app derleme betiği (Bash)
 ├── build_windows.bat      # Windows tek tıkla derleme betiği (CMD)
 ├── build_windows.ps1      # Windows tek tıkla derleme betiği (PowerShell)
 ├── .github/workflows/     # GitHub Actions Windows CI iş akışı (windows-latest)
@@ -78,7 +79,7 @@ python -m teklif_sablonu.main
 
 ## 4. Testleri Çalıştırma ve Kapsam Raporu
 
-Projede 82 adet otomatik birim, entegrasyon, UI ve kabul testi bulunmaktadır.
+Projede 101 adet otomatik birim, entegrasyon, UI ve kabul testi bulunmaktadır.
 
 ```bash
 # Standart test koşumu
@@ -88,7 +89,7 @@ pytest -v
 pytest --cov=teklif_sablonu --cov-report=term-missing
 ```
 
-*Mevcut Test Durumu: 82 passed in 1.1s (Kod Kapsamı: %94).*
+*Mevcut Test Durumu: 101 passed.*
 
 ---
 
@@ -126,18 +127,31 @@ Tüm teklif geçmişini, günlük sayaçları ve arşiv verilerini yedeklemek i�
 
 ---
 
-## 7. Windows Dağıtımı (`.exe` Paketleme)
+## 7. Dağıtım ve Paketleme (macOS .app ve Windows .exe)
 
-Şartname gereğince, macOS üzerinde doğrudan Windows PE formatında `.exe` üretilemeyeceği için Windows paketleme işlemleri Windows ortamında veya GitHub Actions CI üzerinde yürütülür:
+Uygulama, hem macOS hem Windows ortamlarında kullanıcıların çift tıklayarak doğrudan çalıştırabileceği bağımsız paketler olarak derlenebilir:
 
-### A. Windows Bilgisayarında Tek Tıkla Derleme
+### Hazır İndirilebilir Sürümler (Pre-built Releases)
+- **macOS Sürümü (v1.1.0):** [releases/TeklifSablonu-macOS-v1.1.0.zip](releases/TeklifSablonu-macOS-v1.1.0.zip) dosyasını indirip zip'ten çıkartarak `TeklifSablonu.app` uygulamasını doğrudan `/Applications` (Uygulamalar) klasörünüze taşıyıp çalıştırabilirsiniz.
+
+### A. macOS Üzerinde Çift Tıklanabilir Uygulama (`.app`) Derleme
+macOS ortamında tek komutla çift tıklanabilir `.app` paketi üretilir:
+```bash
+./build_macos.sh
+```
+Derleme sonucunda `dist/TeklifSablonu.app` oluşturulur.
+- Çift tıklayarak doğrudan açabilir veya `/Applications` (Uygulamalar) klasörüne taşıyabilirsiniz.
+- Terminalden test etmek için: `open dist/TeklifSablonu.app`
+
+### B. Windows Bilgisayarında Tek Tıkla Derleme (`.exe`)
 Windows ortamında kaynak kod indirildikten sonra:
 - `build_windows.bat` dosyasına çift tıklayın veya
 - PowerShell üzerinden `.\build_windows.ps1` komutunu çalıştırın.
 Derleme sonucunda `dist\TeklifSablonu.exe` tek dosya olarak üretilir.
 
-### B. GitHub Actions ile Bulutta Otomatik Derleme
+### C. GitHub Actions ile Bulutta Otomatik Derleme
 Depo GitHub'a gönderildiğinde (push/pull request), `.github/workflows/build_windows_exe.yml` iş akışı otomatik olarak `windows-latest` sanal makinesinde tüm testleri koşar ve `TeklifSablonu.exe` dosyasını GitHub Artifacts olarak sunar.
+
 
 ---
 

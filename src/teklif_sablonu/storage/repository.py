@@ -120,9 +120,11 @@ class SqliteOfferRepository(OfferRepository):
                         INSERT INTO offers (
                             offer_number, offer_date, company_id, recipient_name,
                             currency_code, quantity_unit, vat_enabled, vat_rate,
-                            discount_enabled, brand_logo_visible, page_orientation, document_language, selected_columns,
-                            source_offer_id, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            discount_enabled, brand_logo_visible, page_orientation, document_language,
+                            template_packaging_info, template_storage_conditions,
+                            template_product_info, template_product_info_items,
+                            selected_columns, source_offer_id, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             offer_number,
@@ -137,6 +139,10 @@ class SqliteOfferRepository(OfferRepository):
                             1 if offer.brand_logo_visible else 0,
                             offer.page_orientation.value,
                             offer.document_language.value,
+                            1 if offer.template_packaging_info else 0,
+                            1 if offer.template_storage_conditions else 0,
+                            1 if offer.template_product_info else 0,
+                            json.dumps(offer.template_product_info_items),
                             sel_cols_json,
                             offer.source_offer_id,
                             now_iso,
@@ -166,6 +172,10 @@ class SqliteOfferRepository(OfferRepository):
                             brand_logo_visible = ?,
                             page_orientation = ?,
                             document_language = ?,
+                            template_packaging_info = ?,
+                            template_storage_conditions = ?,
+                            template_product_info = ?,
+                            template_product_info_items = ?,
                             selected_columns = ?,
                             updated_at = ?
                         WHERE id = ?
@@ -182,6 +192,10 @@ class SqliteOfferRepository(OfferRepository):
                             1 if offer.brand_logo_visible else 0,
                             offer.page_orientation.value,
                             offer.document_language.value,
+                            1 if offer.template_packaging_info else 0,
+                            1 if offer.template_storage_conditions else 0,
+                            1 if offer.template_product_info else 0,
+                            json.dumps(offer.template_product_info_items),
                             sel_cols_json,
                             now_iso,
                             offer.id,
@@ -368,6 +382,16 @@ class SqliteOfferRepository(OfferRepository):
         except ValueError:
             document_language = DocumentLanguage.TR
 
+        template_packaging_info = bool(row["template_packaging_info"]) if "template_packaging_info" in row.keys() else False
+        template_storage_conditions = bool(row["template_storage_conditions"]) if "template_storage_conditions" in row.keys() else False
+        template_product_info = bool(row["template_product_info"]) if "template_product_info" in row.keys() else False
+        template_product_info_items: list[str] = []
+        if "template_product_info_items" in row.keys() and row["template_product_info_items"]:
+            try:
+                template_product_info_items = json.loads(row["template_product_info_items"])
+            except Exception:
+                template_product_info_items = []
+
         return Offer(
             id=offer_id,
             offer_number=row["offer_number"],
@@ -382,6 +406,10 @@ class SqliteOfferRepository(OfferRepository):
             brand_logo_visible=bool(row["brand_logo_visible"]),
             page_orientation=page_orientation,
             document_language=document_language,
+            template_packaging_info=template_packaging_info,
+            template_storage_conditions=template_storage_conditions,
+            template_product_info=template_product_info,
+            template_product_info_items=template_product_info_items,
             selected_columns=selected_columns,
             items=items,
             sections=sections,

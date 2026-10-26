@@ -39,6 +39,7 @@ from teklif_sablonu.ui.archive_widget import ArchiveWidget
 from teklif_sablonu.ui.column_selector_widget import ColumnSelectorWidget
 from teklif_sablonu.ui.header_widget import HeaderWidget
 from teklif_sablonu.ui.items_table_widget import ItemsTableWidget
+from teklif_sablonu.ui.ready_templates_widget import ReadyTemplatesWidget
 from teklif_sablonu.ui.sections_widget import SectionsWidget
 from teklif_sablonu.ui.styles import MAIN_STYLE
 from teklif_sablonu.ui.totals_widget import TotalsWidget
@@ -114,7 +115,11 @@ class MainWindow(QMainWindow):
         self.sections_widget = SectionsWidget()
         scroll_layout.addWidget(self.sections_widget)
 
-        # 6. Alt aksiyon butonları
+        # 6. Hazır şablonlar (Ürün Miktar Bilgileri & Muhafaza Koşulları)
+        self.ready_templates_widget = ReadyTemplatesWidget()
+        scroll_layout.addWidget(self.ready_templates_widget)
+
+        # 7. Alt aksiyon butonları
         action_bar = QHBoxLayout()
         self.btn_new = QPushButton("📄 Yeni Teklif")
         self.btn_new.setProperty("class", "secondary")
@@ -259,6 +264,10 @@ class MainWindow(QMainWindow):
             brand_logo_visible=self.header_widget.is_brand_logo_visible(),
             page_orientation=self.header_widget.get_page_orientation(),
             document_language=self.header_widget.get_document_language(),
+            template_packaging_info=self.ready_templates_widget.is_packaging_enabled(),
+            template_storage_conditions=self.ready_templates_widget.is_storage_enabled(),
+            template_product_info=self.ready_templates_widget.is_product_info_enabled(),
+            template_product_info_items=self.ready_templates_widget.get_selected_product_info_items(),
             selected_columns=self.column_selector.get_selected_columns(),
             items=self.items_table.get_items(),
             sections=self.sections_widget.get_sections(),
@@ -298,6 +307,10 @@ class MainWindow(QMainWindow):
         self.items_table.set_items(offer.items)
 
         self.sections_widget.set_sections(offer.sections)
+        self.ready_templates_widget.set_packaging_enabled(offer.template_packaging_info)
+        self.ready_templates_widget.set_storage_enabled(offer.template_storage_conditions)
+        self.ready_templates_widget.set_product_info_enabled(offer.template_product_info)
+        self.ready_templates_widget.set_selected_product_info_items(offer.template_product_info_items)
         self._recalculate_all()
 
     def clear_offer(self) -> None:
@@ -329,6 +342,7 @@ class MainWindow(QMainWindow):
         self.items_table.set_items([])
 
         self.sections_widget.set_sections([])
+        self.ready_templates_widget.clear()
         self._recalculate_all()
         self.status_bar.showMessage("Yeni teklif oluşturuldu.")
 

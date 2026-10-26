@@ -242,8 +242,8 @@ def test_sections_widget_and_rich_text() -> None:
     """Ticari koşullar varsayılan metinleri ve zengin metin araç çubuğu çalışmalıdır."""
     sec_widget = SectionsWidget()
 
-    # Teslimat adresi checkbox açıldığında varsayılan metin yüklenmeli
-    addr_card = sec_widget._cards[SectionKey.DELIVERY_ADDRESS]
+    # Teslimat şekli checkbox açıldığında varsayılan metin yüklenmeli
+    addr_card = sec_widget._cards[SectionKey.DELIVERY_METHOD]
     assert addr_card.is_enabled() is False
     addr_card.set_enabled(True)
     assert addr_card.is_enabled() is True
@@ -429,4 +429,97 @@ def test_ui_page_orientation_and_copyright() -> None:
 
     QApplication.processEvents()
     win.close()
+
+
+def test_ready_templates_widget_and_main_window_integration() -> None:
+    """Hazır Şablonlar bileşeni ve MainWindow entegrasyonu test edilmelidir."""
+    from teklif_sablonu.ui.ready_templates_widget import ReadyTemplatesWidget
+
+    # 1. Bağımsız bileşen testi
+    widget = ReadyTemplatesWidget()
+    assert widget.is_packaging_enabled() is False
+    assert widget.is_storage_enabled() is False
+
+    signals_received = []
+    widget.templates_changed.connect(lambda: signals_received.append(True))
+
+    widget.set_packaging_enabled(True)
+    assert widget.is_packaging_enabled() is True
+    assert len(signals_received) == 1
+
+    widget.set_storage_enabled(True)
+    assert widget.is_storage_enabled() is True
+    assert len(signals_received) == 2
+
+    # Ürün Bilgileri testi
+    assert widget.is_product_info_enabled() is False
+    assert widget.sub_container.isHidden() is True
+    widget.set_product_info_enabled(True)
+    assert widget.is_product_info_enabled() is True
+    assert widget.sub_container.isHidden() is False
+    assert len(widget.get_selected_product_info_items()) == 0
+
+    # Alt ögeleri seçme
+    widget.set_selected_product_info_items(["quality_guarantee", "orange_juice"])
+    assert widget.get_selected_product_info_items() == ["quality_guarantee", "orange_juice"]
+
+    # Hızlı butonlar
+    widget._select_all_sub_items()
+    assert len(widget.get_selected_product_info_items()) == 13
+    widget._clear_all_sub_items()
+    assert len(widget.get_selected_product_info_items()) == 0
+
+    widget.clear()
+    assert widget.is_packaging_enabled() is False
+    assert widget.is_storage_enabled() is False
+    assert widget.is_product_info_enabled() is False
+    assert widget.sub_container.isHidden() is True
+
+    # 2. MainWindow entegrasyonu
+    import sqlite3
+    from teklif_sablonu.storage.repository import SqliteOfferRepository
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    service = OfferService(SqliteOfferRepository(conn))
+    win = MainWindow(offer_service=service)
+
+    assert hasattr(win, "ready_templates_widget")
+    assert win.ready_templates_widget.is_packaging_enabled() is False
+    assert win.ready_templates_widget.is_storage_enabled() is False
+    assert win.ready_templates_widget.is_product_info_enabled() is False
+
+    # Checkbox'ları işaretleyip to_offer() ile Offer'a yansıdığını doğrula
+    win.ready_templates_widget.set_packaging_enabled(True)
+    win.ready_templates_widget.set_storage_enabled(True)
+    win.ready_templates_widget.set_product_info_enabled(True)
+    win.ready_templates_widget.set_selected_product_info_items(["quality_guarantee", "lemonade_extract"])
+    offer = win.to_offer()
+    assert offer.template_packaging_info is True
+    assert offer.template_storage_conditions is True
+    assert offer.template_product_info is True
+    assert offer.template_product_info_items == ["quality_guarantee", "lemonade_extract"]
+
+    # load_offer ile geri yükleme
+    offer2 = Offer(
+        template_packaging_info=False,
+        template_storage_conditions=True,
+        template_product_info=True,
+        template_product_info_items=["orange_juice"],
+    )
+    win.load_offer(offer2)
+    assert win.ready_templates_widget.is_packaging_enabled() is False
+    assert win.ready_templates_widget.is_storage_enabled() is True
+    assert win.ready_templates_widget.is_product_info_enabled() is True
+    assert win.ready_templates_widget.get_selected_product_info_items() == ["orange_juice"]
+
+    # clear_offer ile sıfırlama
+    win.clear_offer()
+    assert win.ready_templates_widget.is_packaging_enabled() is False
+    assert win.ready_templates_widget.is_storage_enabled() is False
+    assert win.ready_templates_widget.is_product_info_enabled() is False
+
+    QApplication.processEvents()
+    win.close()
+
+
 

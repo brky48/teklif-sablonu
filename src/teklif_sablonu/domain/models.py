@@ -141,6 +141,10 @@ class Offer:
     brand_logo_visible: bool = False
     page_orientation: PageOrientation = PageOrientation.AUTO
     document_language: DocumentLanguage = DocumentLanguage.TR
+    template_packaging_info: bool = False
+    template_storage_conditions: bool = False
+    template_product_info: bool = False
+    template_product_info_items: list[str] = field(default_factory=list)
     selected_columns: list[ColumnKey] = field(default_factory=default_selected_columns)
     items: list[OfferItem] = field(default_factory=list)
     sections: list[OfferSection] = field(default_factory=list)

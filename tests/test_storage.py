@@ -235,3 +235,36 @@ def test_rollback_on_failure(mem_repo: SqliteOfferRepository) -> None:
     # offers tablosuna kayıt eklenmemiş olmalıdır (Rollback doğrulandı)
     count = mem_repo.conn.execute("SELECT count(*) FROM offers").fetchone()[0]
     assert count == 0
+
+
+def test_ready_templates_persistence(mem_repo: SqliteOfferRepository) -> None:
+    """Hazır şablon checkbox tercihleri veritabanına doğru kaydedilip okunmalıdır."""
+    offer = Offer(
+        offer_date=date(2026, 10, 26),
+        recipient_name="Hazır Şablon Testi",
+        template_packaging_info=True,
+        template_storage_conditions=False,
+        template_product_info=True,
+        template_product_info_items=["quality_guarantee", "lemonade_extract"],
+        items=[OfferItem(description="Ürün", quantity=Decimal("1"), unit_price=Decimal("100"))],
+    )
+    saved = mem_repo.save(offer)
+    retrieved = mem_repo.get_by_id(saved.id)
+    assert retrieved is not None
+    assert retrieved.template_packaging_info is True
+    assert retrieved.template_storage_conditions is False
+    assert retrieved.template_product_info is True
+    assert retrieved.template_product_info_items == ["quality_guarantee", "lemonade_extract"]
+
+    # Güncelleme testi
+    retrieved.template_storage_conditions = True
+    retrieved.template_product_info_items = ["quality_guarantee", "orange_juice", "pomegranate_juice"]
+    updated = mem_repo.save(retrieved)
+    re_retrieved = mem_repo.get_by_id(updated.id)
+    assert re_retrieved is not None
+    assert re_retrieved.template_packaging_info is True
+    assert re_retrieved.template_storage_conditions is True
+    assert re_retrieved.template_product_info is True
+    assert re_retrieved.template_product_info_items == ["quality_guarantee", "orange_juice", "pomegranate_juice"]
+
+

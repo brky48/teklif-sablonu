@@ -1,6 +1,6 @@
 [project]
 name = "teklif-sablonu"
-version = "1.0.0"
+version = "1.1.0"
 description = "Endemiks şirketleri için teklif hazırlama masaüstü uygulaması"
 requires-python = ">=3.11"
 dependencies = [

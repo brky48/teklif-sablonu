@@ -77,6 +77,16 @@ MIGRATIONS: dict[int, str] = {
     -- Belge dili seçimi: 'tr' veya 'en'
     ALTER TABLE offers ADD COLUMN document_language TEXT NOT NULL DEFAULT 'tr';
     """,
+    4: """
+    -- Hazır şablonlar: Ürün Miktar Bilgileri (Paketleme) ve Muhafaza Koşulları
+    ALTER TABLE offers ADD COLUMN template_packaging_info INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE offers ADD COLUMN template_storage_conditions INTEGER NOT NULL DEFAULT 0;
+    """,
+    5: """
+    -- Hazır şablonlar: Ürün Bilgileri ve seçilen alt ögeler
+    ALTER TABLE offers ADD COLUMN template_product_info INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE offers ADD COLUMN template_product_info_items TEXT NOT NULL DEFAULT '[]';
+    """,
 }
 
 

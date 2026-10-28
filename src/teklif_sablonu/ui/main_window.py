@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from teklif_sablonu import __version__
 from teklif_sablonu.domain.calculator import calculate_offer_totals
 from teklif_sablonu.domain.enums import (
     ColumnKey,
@@ -167,8 +168,8 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Hazır")
 
-        # Kalıcı Copyright Bilgisi (Madde 10)
-        self.copyright_lbl = QLabel("Geliştirici: Berkay Korkut | © 2026")
+        # Kalıcı Copyright ve Sürüm Bilgisi (Madde 10)
+        self.copyright_lbl = QLabel(f"Geliştirici: Berkay Korkut | © 2026 | v{__version__}")
         self.copyright_lbl.setStyleSheet("color: #718096; font-size: 11px; padding-right: 12px;")
         self.status_bar.addPermanentWidget(self.copyright_lbl)
 
@@ -264,6 +265,7 @@ class MainWindow(QMainWindow):
             brand_logo_visible=self.header_widget.is_brand_logo_visible(),
             page_orientation=self.header_widget.get_page_orientation(),
             document_language=self.header_widget.get_document_language(),
+            pdf_font_size=self.header_widget.get_pdf_font_size(),
             template_packaging_info=self.ready_templates_widget.is_packaging_enabled(),
             template_storage_conditions=self.ready_templates_widget.is_storage_enabled(),
             template_product_info=self.ready_templates_widget.is_product_info_enabled(),
@@ -291,6 +293,7 @@ class MainWindow(QMainWindow):
         self.header_widget.set_brand_logo_visible(offer.brand_logo_visible)
         self.header_widget.set_page_orientation(offer.page_orientation)
         self.header_widget.set_document_language(offer.document_language)
+        self.header_widget.set_pdf_font_size(getattr(offer, "pdf_font_size", 8.0))
 
         self.column_selector.set_quantity_unit(offer.quantity_unit)
         self.column_selector.update_feature_dependencies(
@@ -330,6 +333,7 @@ class MainWindow(QMainWindow):
         self.header_widget.set_brand_logo_visible(False)
         self.header_widget.set_page_orientation(PageOrientation.AUTO)
         self.header_widget.set_document_language(DocumentLanguage.TR)
+        self.header_widget.set_pdf_font_size(8.0)
 
         self.column_selector.set_quantity_unit(QuantityUnit.PIECE)
         self.column_selector.update_feature_dependencies(vat_enabled=False, discount_enabled=False)

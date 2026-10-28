@@ -164,6 +164,18 @@ class HeaderWidget(QWidget):
         self.lang_combo.currentIndexChanged.connect(self._on_changed)
         grid.addWidget(self.lang_combo, 4, 3)
 
+        # 10. PDF Yazı Boyutu (Font Size)
+        grid.addWidget(QLabel("PDF Yazı Boyutu:"), 5, 0)
+        self.font_size_combo = QComboBox()
+        self.font_size_combo.addItem("8.0 pt (Varsayılan - Standart)", 8.0)
+        self.font_size_combo.addItem("7.5 pt (Küçük)", 7.5)
+        self.font_size_combo.addItem("7.0 pt (Çok Küçük / Kompakt)", 7.0)
+        self.font_size_combo.addItem("6.5 pt (Ekstra Kompakt)", 6.5)
+        self.font_size_combo.addItem("8.5 pt (Büyük)", 8.5)
+        self.font_size_combo.addItem("9.0 pt (Çok Büyük)", 9.0)
+        self.font_size_combo.currentIndexChanged.connect(self._on_changed)
+        grid.addWidget(self.font_size_combo, 5, 1)
+
         main_layout.addWidget(group)
 
     def _update_recipient_counter(self) -> None:
@@ -303,3 +315,21 @@ class HeaderWidget(QWidget):
             self.lang_combo.setCurrentIndex(idx)
         else:
             self.lang_combo.setCurrentIndex(0)
+
+    def get_pdf_font_size(self) -> float:
+        """Kullanıcının seçtiği PDF font büyüklüğünü döndürür (varsayılan: 8.0 pt)."""
+        data = self.font_size_combo.currentData()
+        try:
+            return float(data) if data is not None else 8.0
+        except (ValueError, TypeError):
+            return 8.0
+
+    def set_pdf_font_size(self, size: float | None) -> None:
+        """PDF font büyüklüğünü ayarlar."""
+        target = float(size) if size is not None else 8.0
+        for idx in range(self.font_size_combo.count()):
+            val = self.font_size_combo.itemData(idx)
+            if val is not None and abs(float(val) - target) < 0.05:
+                self.font_size_combo.setCurrentIndex(idx)
+                return
+        self.font_size_combo.setCurrentIndex(0)

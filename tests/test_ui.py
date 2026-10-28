@@ -400,9 +400,10 @@ def test_ui_page_orientation_and_copyright() -> None:
     service = OfferService(SqliteOfferRepository(conn))
     win = MainWindow(offer_service=service)
 
-    # 1. Copyright etiketi kontrolü
+    # 1. Copyright ve Sürüm etiketi kontrolü
     assert hasattr(win, "copyright_lbl")
     assert "Berkay Korkut" in win.copyright_lbl.text()
+    assert "v1.3.3" in win.copyright_lbl.text()
 
     # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
     assert win.header_widget.get_page_orientation() == PageOrientation.AUTO
@@ -522,4 +523,35 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     win.close()
 
 
+def test_ui_pdf_font_size() -> None:
+    """Arayüzde PDF font boyutu seçimi, model dönüşümü ve sıfırlanması doğrulanmalıdır."""
+    import sqlite3
+    from teklif_sablonu.storage.repository import SqliteOfferRepository
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    service = OfferService(SqliteOfferRepository(conn))
+    win = MainWindow(offer_service=service)
 
+    # 1. Varsayılan font boyutu 8.0 pt olmalıdır
+    assert win.header_widget.get_pdf_font_size() == 8.0
+
+    # 2. Boyut değiştirme
+    win.header_widget.set_pdf_font_size(7.0)
+    assert win.header_widget.get_pdf_font_size() == 7.0
+    offer = win.to_offer()
+    assert offer.pdf_font_size == 7.0
+
+    # 3. load_offer ile yükleme
+    offer2 = Offer(
+        recipient_name="Font Test",
+        pdf_font_size=7.5,
+    )
+    win.load_offer(offer2)
+    assert win.header_widget.get_pdf_font_size() == 7.5
+
+    # 4. clear_offer ile varsayılana dönüş
+    win.clear_offer()
+    assert win.header_widget.get_pdf_font_size() == 8.0
+
+    QApplication.processEvents()
+    win.close()

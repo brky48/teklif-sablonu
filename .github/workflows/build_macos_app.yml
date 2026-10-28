@@ -1,0 +1,49 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Kaynak Kodunu Çek
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Bağımlılıkları Yükle
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Tüm Testleri Çalıştır
+        run: |
+          pytest -v
+
+      - name: PyInstaller ile macOS .app Derle
+        run: |
+          pyinstaller --clean teklif_sablonu.spec
+          xattr -cr "dist/TeklifSablonu.app" || true
+
+      - name: macOS .app Paketini Zip Olarak Sıkıştır
+        run: |
+          cd dist
+          zip -r TeklifSablonu-macOS.zip TeklifSablonu.app
+
+      - name: macOS .APP Dosyasını Kaydet (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeklifSablonu-macOS
+          path: dist/TeklifSablonu-macOS.zip
+          if-no-files-found: error

@@ -535,4 +535,72 @@ def test_pdf_ready_templates_product_info(pdf_service: PdfService, tmp_path: Pat
     assert "GRAPEFRUIT JUICE" in joined_en
 
 
+def test_product_info_contents_and_lemon_juice_header() -> None:
+    """Ürün bilgileri açıklamaları ve Pulplu Limon Suyu başlığı doğrulanmalıdır."""
+    from teklif_sablonu.services.pdf_service import PRODUCT_INFO_DATA
+
+    # 1. Limon suyu başlığı
+    lemon_tr = PRODUCT_INFO_DATA["lemon_juice"]["content_tr"]
+    assert "Pulplu Limon Suyu (Doğal ve Geleneksel):" in lemon_tr
+    assert "Pulpalı Limon Suyu (Doğal ve Geleneksel):" not in lemon_tr
+
+    # 2. Tüketime Hazır Limonata içerikleri
+    lemonade_tr = PRODUCT_INFO_DATA["lemonade_rtd"]["content_tr"]
+    lemonade_en = PRODUCT_INFO_DATA["lemonade_rtd"]["content_en"]
+    assert lemonade_tr != "-"
+    assert "Pancar Şekeri, Portakal Suyu" in lemonade_tr
+    assert "Direkt tüketim için uygundur" in lemonade_tr
+    assert "Juresh Limonata Özütü’nün su ile buluşturulmasıyla" in lemonade_tr
+
+    assert lemonade_en != "-"
+    assert "LEMONADE READY TO DRINK" == PRODUCT_INFO_DATA["lemonade_rtd"]["title_en"]
+    assert "Beet Sugar, Orange Juice" in lemonade_en
+    assert "Suitable for direct consumption" in lemonade_en
+    assert "Juresh Lemonade Concentrate" in lemonade_en
+
+    # 3. Greyfurt Suyu içerikleri
+    grapefruit_tr = PRODUCT_INFO_DATA["grapefruit_juice"]["content_tr"]
+    grapefruit_en = PRODUCT_INFO_DATA["grapefruit_juice"]["content_en"]
+    assert grapefruit_tr != "-"
+    assert "%100 Greyfurt Suyu" in grapefruit_tr
+    assert "Muğla, Mersin" in grapefruit_tr
+
+    assert grapefruit_en != "-"
+    assert "100% Grapefruit Juice" in grapefruit_en
+    assert "Suitable for direct consumption" in grapefruit_en
+
+
+def test_pdf_font_size_scaling(pdf_service: PdfService, tmp_path: Path) -> None:
+    """PDF font boyutu ölçeklemesi ve PDF oluşturulması doğrulanmalıdır."""
+    from teklif_sablonu.templates.pdf_styles import get_pdf_styles
+
+    # 1. Stil punto ve satır aralığı ölçeklemesi
+    styles_8 = get_pdf_styles(8.0)
+    assert styles_8["TableCellLeft"].fontSize == 8.0
+    assert styles_8["TableCellLeft"].leading == 10.0
+    assert styles_8["GrandTotalTitle"].fontSize == 10.0
+
+    styles_7 = get_pdf_styles(7.0)
+    assert styles_7["TableCellLeft"].fontSize == 7.0
+    assert styles_7["TableCellLeft"].leading == 8.75
+    assert styles_7["GrandTotalTitle"].fontSize == 8.75
+
+    styles_75 = get_pdf_styles(7.5)
+    assert styles_75["TableCellLeft"].fontSize == 7.5
+
+    # 2. PDF oluşturma testi (Kompakt font ile)
+    offer = Offer(
+        offer_number="20261028-FONT",
+        offer_date=date(2026, 10, 28),
+        recipient_name="Kompakt Font Test A.Ş.",
+        pdf_font_size=7.0,
+        items=[
+            OfferItem(description="Ürün 1", quantity=Decimal("10"), unit_price=Decimal("50")),
+            OfferItem(description="Ürün 2", quantity=Decimal("5"), unit_price=Decimal("120")),
+        ],
+    )
+    p = tmp_path / "compact_offer.pdf"
+    res = pdf_service.generate_pdf(offer, p)
+    assert res.exists()
+    assert res.stat().st_size > 1000
 

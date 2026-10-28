@@ -87,6 +87,10 @@ MIGRATIONS: dict[int, str] = {
     ALTER TABLE offers ADD COLUMN template_product_info INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE offers ADD COLUMN template_product_info_items TEXT NOT NULL DEFAULT '[]';
     """,
+    6: """
+    -- PDF Yazı boyutu seçimi (varsayılan 8.0 pt)
+    ALTER TABLE offers ADD COLUMN pdf_font_size REAL NOT NULL DEFAULT 8.0;
+    """,
 }
 
 

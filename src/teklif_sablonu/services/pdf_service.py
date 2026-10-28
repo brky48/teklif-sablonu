@@ -350,8 +350,24 @@ PRODUCT_INFO_DATA: dict[str, dict[str, Any]] = {
         "title_tr": "TÜKETİME HAZIR LİMONATA",
         "title_en": "LEMONADE READY TO DRINK",
         "type": "box",
-        "content_tr": "-",
-        "content_en": "-",
+        "content_tr": (
+            "<b>İçindekiler:</b> Limon Suyu, Pancar Şekeri, Portakal Suyu, Limon Kabuğu, Portakal Kabuğu, Su.<br/>"
+            "<b>Tüketim Şekli:</b> Direkt tüketim için uygundur.<br/><br/>"
+            "Ürünlerimiz Muğla, Mersin ve çevre illerdeki çiftçilerimizin emeklerini ve meyvelerin tazeliğini, "
+            "aromasını içinde saklar. Pancar şekeri ve doğal meyve içeriği ile geleneksel lezzeti tüm doğallığı "
+            "ile sizlere sunar. Tüketime hazır limonata, Juresh Limonata Özütü’nün su ile buluşturulmasıyla "
+            "hazırlanarak aynı geleneksel lezzeti hiçbir hazırlık gerektirmeden, doğrudan tüketebileceğiniz "
+            "şekilde sizlere sunar."
+        ),
+        "content_en": (
+            "<b>Ingredients:</b> Lemon Juice, Beet Sugar, Orange Juice, Lemon Peel, Orange Peel, Drinking Water.<br/>"
+            "<b>Consumption Method:</b> Suitable for direct consumption.<br/><br/>"
+            "Our products preserve the freshness, aroma, and the hard work of farmers from Muğla, Mersin, "
+            "and surrounding provinces. With beet sugar and natural fruit content, it delivers traditional "
+            "flavor in its purest form. Ready-to-drink lemonade is made by combining Juresh Lemonade "
+            "Concentrate with water, offering the same traditional flavor in a convenient, ready-to-enjoy "
+            "form with no additional preparation required."
+        ),
     },
     "bodrum_mandarin_extract": {
         "title_tr": "BODRUM MANDALİNATASI ÖZÜTÜ",
@@ -379,8 +395,18 @@ PRODUCT_INFO_DATA: dict[str, dict[str, Any]] = {
         "title_tr": "GREYFURT SUYU",
         "title_en": "GRAPEFRUIT JUICE",
         "type": "box",
-        "content_tr": "-",
-        "content_en": "-",
+        "content_tr": (
+            "<b>İçindekiler:</b> %100 Greyfurt Suyu.<br/>"
+            "<b>Tüketim Şekli:</b> Direkt tüketim için uygundur.<br/><br/>"
+            "Ürünlerimiz Muğla, Mersin ve çevre illerdeki çiftçilerimizin emeklerini ve meyvelerin tazeliğini, "
+            "aromasını içinde saklar."
+        ),
+        "content_en": (
+            "<b>Ingredients:</b> 100% Grapefruit Juice.<br/>"
+            "<b>Consumption Method:</b> Suitable for direct consumption.<br/><br/>"
+            "Our products preserve the freshness, aroma, and the hard work of farmers from Muğla, Mersin, "
+            "and surrounding provinces."
+        ),
     },
     "lemon_juice": {
         "title_tr": "LİMON SUYU",
@@ -394,7 +420,7 @@ PRODUCT_INFO_DATA: dict[str, dict[str, Any]] = {
             "stabilitesi, kristal berraklığı ve hassas proses kontrolüyle öne çıkar. Tortu içermeyen formülü "
             "sayesinde homojenliğini korur ve karışımların rengini değiştirmez. Bu özellikleriyle kokteyller, "
             "gurme yemekler, barmenler ve fine dining şefleri için ideal bir seçenektir.<br/><br/>"
-            "<b>Pulpalı Limon Suyu (Doğal ve Geleneksel):</b><br/>"
+            "<b>Pulplu Limon Suyu (Doğal ve Geleneksel):</b><br/>"
             "Limon suyunda gerçek doğallık, meyvenin kendine özgü yapısının korunmasıyla mümkündür. "
             "Pulpalı Limon Suyu (Doğal ve Geleneksel), yüksek posa içeriğini ve yoğun aromasını koruyarak "
             "otantik bir tat ve ev yapımı hissi sunar. Doğal posa içeriği, tüketicilere gerçek meyve "
@@ -606,20 +632,26 @@ class PdfService:
 
         flowables: list[Any] = []
 
+        # Stilleri ve aralıkları teklifin font büyüklüğüne göre ölçekle
+        font_size = float(getattr(offer, "pdf_font_size", 8.0))
+        self.styles = get_pdf_styles(font_size)
+        scale = font_size / 8.0
+        gap = max(5.0, round(10.0 * scale, 1))
+
         # ── 1. ÜST BÖLÜM (Header: Logolar, Teklif No/Tarih ve Şirket Bilgileri) ──
         header_table = self._build_header(offer, usable_width)
         flowables.append(header_table)
-        flowables.append(Spacer(1, 10))
+        flowables.append(Spacer(1, gap))
 
         # ── 2. ÜRÜN TABLOSU (Çok sayfada repeatRows=1 ile başlık tekrarı) ──
         items_table = self._build_items_table(offer, valid_items, item_calcs, visible_cols, usable_width)
         flowables.append(items_table)
-        flowables.append(Spacer(1, 10))
+        flowables.append(Spacer(1, gap))
 
         # ── 3. GENEL TOPLAM ÖZETİ (Bölüm 8.5) ──
         totals_table = self._build_totals_table(offer, totals, usable_width)
         flowables.append(totals_table)
-        flowables.append(Spacer(1, 10))
+        flowables.append(Spacer(1, gap))
 
         # ── 4. TİCARİ KOŞULLAR (Bölüm 7.6) ──
         conditions_block = self._build_conditions(offer, usable_width)
@@ -628,7 +660,7 @@ class PdfService:
 
         # ── 5. İMZA ALANLARI (Sayfanın en altına itilmiş) ──
         signature_table = self._build_signatures(offer, usable_width)
-        flowables.append(DynamicBottomSpacer(target_flowable=signature_table, min_gap=12.0))
+        flowables.append(DynamicBottomSpacer(target_flowable=signature_table, min_gap=max(8.0, 12.0 * scale)))
         flowables.append(signature_table)
 
         # ── 6. HAZIR ŞABLONLAR (Opsiyonel Yeni Sayfa) ──
@@ -820,6 +852,7 @@ class PdfService:
                 row.append(p)
             table_data.append(row)
 
+        pad = max(2.5, round(4.0 * (float(getattr(offer, "pdf_font_size", 8.0)) / 8.0), 1))
         table = Table(table_data, colWidths=col_widths, repeatRows=1)
         table.setStyle(
             TableStyle([
@@ -827,10 +860,10 @@ class PdfService:
                 ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F7FAFC")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), pad),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), pad),
+                ("LEFTPADDING", (0, 0), (-1, -1), pad),
+                ("RIGHTPADDING", (0, 0), (-1, -1), pad),
             ])
         )
         return table
@@ -979,21 +1012,23 @@ class PdfService:
         company = next((c for c in companies if c.id == offer.company_id), companies[0])
         is_en = offer.document_language == DocumentLanguage.EN
 
+        scale = float(getattr(offer, "pdf_font_size", 8.0)) / 8.0
         box_w = (usable_width - 20) / 2.0
-        box_h = 75
+        box_h = max(55.0, round(75.0 * scale, 1))
+        spacer_h = max(20.0, box_h - 22)
 
         # Sol Kutu: Alıcı / Müşteri
         default_recipient = "CUSTOMER APPROVAL / SIGNATURE" if is_en else "MÜŞTERİ ONAY / İMZA"
         recipient_title = offer.recipient_name or default_recipient
         left_content = [
             Paragraph(f"<b>{recipient_title.upper()}</b>", self.styles["SignatureTitle"]),
-            Spacer(1, box_h - 22),
+            Spacer(1, spacer_h),
         ]
 
         # Sağ Kutu: Şirket
         right_content = [
             Paragraph(f"<b>{company.display_name}</b>", self.styles["SignatureTitle"]),
-            Spacer(1, box_h - 22),
+            Spacer(1, spacer_h),
         ]
 
         sig_data = [[left_content, "", right_content]]

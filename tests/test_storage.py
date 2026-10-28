@@ -268,3 +268,22 @@ def test_ready_templates_persistence(mem_repo: SqliteOfferRepository) -> None:
     assert re_retrieved.template_product_info_items == ["quality_guarantee", "orange_juice", "pomegranate_juice"]
 
 
+def test_pdf_font_size_persistence(mem_repo: SqliteOfferRepository) -> None:
+    """PDF font boyutu tercihi veritabanına doğru kaydedilip güncellenmelidir."""
+    offer = Offer(
+        offer_date=date(2026, 10, 26),
+        recipient_name="Font Boyutu Testi",
+        pdf_font_size=7.5,
+        items=[OfferItem(description="Ürün", quantity=Decimal("1"), unit_price=Decimal("100"))],
+    )
+    saved = mem_repo.save(offer)
+    retrieved = mem_repo.get_by_id(saved.id)
+    assert retrieved is not None
+    assert abs(retrieved.pdf_font_size - 7.5) < 0.01
+
+    # Güncelleme
+    retrieved.pdf_font_size = 6.5
+    updated = mem_repo.save(retrieved)
+    re_retrieved = mem_repo.get_by_id(updated.id)
+    assert re_retrieved is not None
+    assert abs(re_retrieved.pdf_font_size - 6.5) < 0.01

@@ -141,6 +141,7 @@ class Offer:
     brand_logo_visible: bool = False
     page_orientation: PageOrientation = PageOrientation.AUTO
     document_language: DocumentLanguage = DocumentLanguage.TR
+    pdf_font_size: float = 8.0
     template_packaging_info: bool = False
     template_storage_conditions: bool = False
     template_product_info: bool = False

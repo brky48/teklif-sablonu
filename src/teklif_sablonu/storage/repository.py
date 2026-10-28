@@ -121,10 +121,11 @@ class SqliteOfferRepository(OfferRepository):
                             offer_number, offer_date, company_id, recipient_name,
                             currency_code, quantity_unit, vat_enabled, vat_rate,
                             discount_enabled, brand_logo_visible, page_orientation, document_language,
+                            pdf_font_size,
                             template_packaging_info, template_storage_conditions,
                             template_product_info, template_product_info_items,
                             selected_columns, source_offer_id, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             offer_number,
@@ -139,6 +140,7 @@ class SqliteOfferRepository(OfferRepository):
                             1 if offer.brand_logo_visible else 0,
                             offer.page_orientation.value,
                             offer.document_language.value,
+                            float(offer.pdf_font_size),
                             1 if offer.template_packaging_info else 0,
                             1 if offer.template_storage_conditions else 0,
                             1 if offer.template_product_info else 0,
@@ -172,6 +174,7 @@ class SqliteOfferRepository(OfferRepository):
                             brand_logo_visible = ?,
                             page_orientation = ?,
                             document_language = ?,
+                            pdf_font_size = ?,
                             template_packaging_info = ?,
                             template_storage_conditions = ?,
                             template_product_info = ?,
@@ -192,6 +195,7 @@ class SqliteOfferRepository(OfferRepository):
                             1 if offer.brand_logo_visible else 0,
                             offer.page_orientation.value,
                             offer.document_language.value,
+                            float(offer.pdf_font_size),
                             1 if offer.template_packaging_info else 0,
                             1 if offer.template_storage_conditions else 0,
                             1 if offer.template_product_info else 0,
@@ -392,6 +396,8 @@ class SqliteOfferRepository(OfferRepository):
             except Exception:
                 template_product_info_items = []
 
+        pdf_font_size = float(row["pdf_font_size"]) if "pdf_font_size" in row.keys() and row["pdf_font_size"] is not None else 8.0
+
         return Offer(
             id=offer_id,
             offer_number=row["offer_number"],
@@ -406,6 +412,7 @@ class SqliteOfferRepository(OfferRepository):
             brand_logo_visible=bool(row["brand_logo_visible"]),
             page_orientation=page_orientation,
             document_language=document_language,
+            pdf_font_size=pdf_font_size,
             template_packaging_info=template_packaging_info,
             template_storage_conditions=template_storage_conditions,
             template_product_info=template_product_info,

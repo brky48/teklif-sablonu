@@ -7,6 +7,7 @@ import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from teklif_sablonu import __version__
 from teklif_sablonu.config import ASSETS_DIR
 from teklif_sablonu.ui.main_window import MainWindow
 
@@ -25,7 +26,7 @@ def create_app(argv: list[str] | None = None) -> tuple[QApplication, MainWindow]
         app = QApplication(argv)
     app.setApplicationName("Teklif Şablonu")
     app.setOrganizationName("Endemiks")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion(__version__)
 
     icon_path = ASSETS_DIR / "app_icon.png"
     if icon_path.exists():

@@ -91,6 +91,23 @@ MIGRATIONS: dict[int, str] = {
     -- PDF Yazı boyutu seçimi (varsayılan 8.0 pt)
     ALTER TABLE offers ADD COLUMN pdf_font_size REAL NOT NULL DEFAULT 8.0;
     """,
+    7: """
+    -- Hazır şablonlar: Hasat ve Olgunlaşma Takvimi
+    ALTER TABLE offers ADD COLUMN template_harvest_calendar INTEGER NOT NULL DEFAULT 0;
+    """,
+    8: """
+    -- Özel / Ek Sayfalar (Boş Sayfa Ekle)
+    CREATE TABLE IF NOT EXISTS offer_custom_pages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id INTEGER NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL DEFAULT 0,
+        title TEXT NOT NULL DEFAULT '',
+        content_html TEXT NOT NULL DEFAULT '',
+        image_path TEXT DEFAULT '',
+        font_size REAL NOT NULL DEFAULT 8.0
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_pages_offer_id ON offer_custom_pages(offer_id);
+    """,
 }
 
 

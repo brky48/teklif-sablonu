@@ -9,6 +9,7 @@ from decimal import Decimal
 from teklif_sablonu.config.settings import RECIPIENT_MAX_CHARS
 from teklif_sablonu.domain.calculator import calculate_item
 from teklif_sablonu.domain.enums import (
+    FIXED_COLUMN_ORDER,
     ColumnKey,
     DiscountType,
     SectionKey,
@@ -307,12 +308,7 @@ def validate_offer(offer: Offer) -> ValidationResult:
                 )
 
     # 5. Zorunlu sütunların varlığı (Bölüm 6.3)
-    mandatory_cols = [
-        ColumnKey.DESCRIPTION,
-        ColumnKey.QUANTITY,
-        ColumnKey.UNIT_PRICE,
-        ColumnKey.TOTAL_AMOUNT,
-    ]
+    mandatory_cols = [col for col in FIXED_COLUMN_ORDER if col.is_mandatory]
     for col in mandatory_cols:
         if col not in offer.selected_columns:
             errors.append(

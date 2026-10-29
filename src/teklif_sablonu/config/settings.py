@@ -139,6 +139,11 @@ def load_app_config() -> AppConfig:
     )
 
 
+def load_harvest_calendar() -> dict[str, Any]:
+    """harvest_calendar.json dosyasından hasat ve olgunlaşma takvimi yapılandırmasını yükler."""
+    return _load_json("harvest_calendar.json")
+
+
 # ──────────────────────────────────────────────
 # Assets dizini
 # ──────────────────────────────────────────────
@@ -148,4 +153,5 @@ ASSETS_DIR = _PACKAGE_ROOT / "assets"
 FONTS_DIR = ASSETS_DIR / "fonts"
 BRANDS_DIR = ASSETS_DIR / "brands"
 COMPANIES_DIR = ASSETS_DIR / "companies"
+HARVEST_DIR = ASSETS_DIR / "harvest"
 

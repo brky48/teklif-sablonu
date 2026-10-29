@@ -69,6 +69,11 @@ class ReadyTemplatesWidget(QWidget):
         self.cb_storage.setChecked(False)
         self.cb_storage.toggled.connect(self._on_toggled)
 
+        self.cb_harvest = QCheckBox("Hasat Takvimi")
+        self.cb_harvest.setStyleSheet("font-weight: 600; color: #2B6CB0;")
+        self.cb_harvest.setChecked(False)
+        self.cb_harvest.toggled.connect(self._on_toggled)
+
         self.cb_product_info = QCheckBox("Ürün Bilgileri")
         self.cb_product_info.setStyleSheet("font-weight: 600; color: #2B6CB0;")
         self.cb_product_info.setChecked(False)
@@ -76,6 +81,7 @@ class ReadyTemplatesWidget(QWidget):
 
         checkboxes_layout.addWidget(self.cb_packaging)
         checkboxes_layout.addWidget(self.cb_storage)
+        checkboxes_layout.addWidget(self.cb_harvest)
         checkboxes_layout.addWidget(self.cb_product_info)
         checkboxes_layout.addStretch()
 
@@ -166,6 +172,12 @@ class ReadyTemplatesWidget(QWidget):
     def set_storage_enabled(self, enabled: bool) -> None:
         self.cb_storage.setChecked(enabled)
 
+    def is_harvest_enabled(self) -> bool:
+        return self.cb_harvest.isChecked()
+
+    def set_harvest_enabled(self, enabled: bool) -> None:
+        self.cb_harvest.setChecked(enabled)
+
     def is_product_info_enabled(self) -> bool:
         return self.cb_product_info.isChecked()
 
@@ -185,6 +197,7 @@ class ReadyTemplatesWidget(QWidget):
     def clear(self) -> None:
         self.cb_packaging.setChecked(False)
         self.cb_storage.setChecked(False)
+        self.cb_harvest.setChecked(False)
         self.cb_product_info.setChecked(False)
         self.sub_container.setVisible(False)
         for cb in self._sub_checkboxes.values():

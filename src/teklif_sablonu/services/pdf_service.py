@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import cm, mm
 from reportlab.pdfgen import canvas
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     Flowable,
     HRFlowable,
@@ -27,7 +29,9 @@ from teklif_sablonu.config import (
     ASSETS_DIR,
     BRANDS_DIR,
     COMPANIES_DIR,
+    HARVEST_DIR,
     load_companies,
+    load_harvest_calendar,
 )
 from teklif_sablonu.domain.calculator import calculate_offer
 from teklif_sablonu.domain.enums import (
@@ -38,7 +42,7 @@ from teklif_sablonu.domain.enums import (
     PageOrientation,
     SectionKey,
 )
-from teklif_sablonu.domain.models import Offer, OfferItem
+from teklif_sablonu.domain.models import CustomPage, Offer, OfferItem
 from teklif_sablonu.domain.parsers import format_decimal_tr
 from teklif_sablonu.domain.validators import validate_offer
 from teklif_sablonu.services.html_utils import qt_html_to_reportlab
@@ -564,6 +568,9 @@ class PdfService:
                 elif col == ColumnKey.VAT and offer.vat_enabled and offer.vat_rate > 0:
                     has_value = True
                     break
+                elif col == ColumnKey.TOTAL_AMOUNT:
+                    has_value = True
+                    break
                 elif col == ColumnKey.TOTAL_DISCOUNTED and offer.discount_enabled:
                     has_value = True
                     break
@@ -649,9 +656,15 @@ class PdfService:
         flowables.append(Spacer(1, gap))
 
         # ── 3. GENEL TOPLAM ÖZETİ (Bölüm 8.5) ──
-        totals_table = self._build_totals_table(offer, totals, usable_width)
-        flowables.append(totals_table)
-        flowables.append(Spacer(1, gap))
+        # Toplam Tutar veya türevi sütunlar görünürse toplam kartı eklenir (Birim fiyat tekliflerinde gizlenebilir)
+        has_any_total_col = any(
+            c in visible_cols
+            for c in (ColumnKey.TOTAL_AMOUNT, ColumnKey.TOTAL_DISCOUNTED, ColumnKey.TOTAL_WITH_VAT)
+        )
+        if has_any_total_col:
+            totals_table = self._build_totals_table(offer, totals, usable_width)
+            flowables.append(totals_table)
+            flowables.append(Spacer(1, gap))
 
         # ── 4. TİCARİ KOŞULLAR (Bölüm 7.6) ──
         conditions_block = self._build_conditions(offer, usable_width)
@@ -667,12 +680,22 @@ class PdfService:
         has_ready_templates = (
             offer.template_packaging_info
             or offer.template_storage_conditions
+            or getattr(offer, "template_harvest_calendar", False)
             or (offer.template_product_info and bool(offer.template_product_info_items))
         )
         if has_ready_templates:
             flowables.append(PageBreak())
             template_elements = self._build_ready_templates(offer, usable_width)
             flowables.extend(template_elements)
+
+        # ── 7. ÖZEL / EK SAYFALAR (Boş Sayfa Ekle - Appendix) ──
+        if getattr(offer, "custom_pages", None):
+            for cp in offer.custom_pages:
+                if cp.is_empty():
+                    continue
+                flowables.append(PageBreak())
+                custom_page_elements = self._build_custom_page(offer, cp, usable_width)
+                flowables.extend(custom_page_elements)
 
         # PDF oluştur
         class OfferNumberedCanvas(NumberedCanvas):
@@ -945,16 +968,21 @@ class PdfService:
         return wrapper
 
     def _build_conditions(self, offer: Offer, usable_width: float) -> KeepTogether | None:
-        """Etkin ticari koşul bölümlerini ve başlıksız tam genişlikli ek alan kutusunu hazırlar."""
+        """Etkin ticari koşul bölümlerini, teklif iletişim bilgileri kutusunu ve ek alan kutusunu hazırlar."""
         elements: list[Any] = []
         table_rows: list[list[Any]] = []
+        contact_info_html: str | None = None
         add_notes_html: str | None = None
 
         for sec in offer.sections:
             if not sec.enabled or not sec.text or not sec.text.strip():
                 continue
 
-            if sec.section_key == SectionKey.ADDITIONAL_NOTES:
+            if sec.section_key == SectionKey.CONTACT_INFO:
+                clean_html = qt_html_to_reportlab(sec.text.strip())
+                if clean_html:
+                    contact_info_html = clean_html
+            elif sec.section_key == SectionKey.ADDITIONAL_NOTES:
                 # Kullanıcı şartı: Ek Alan içinde sabit başlık/yorum olmamalı, sadece girilen zengin metin yer almalı.
                 clean_html = qt_html_to_reportlab(sec.text.strip())
                 if clean_html:
@@ -966,7 +994,26 @@ class PdfService:
                     Paragraph(sec.text.strip(), self.styles["ConditionText"]),
                 ])
 
+        # 1. Teklif İletişim Bilgileri kutusu (Kendi kutucuğuna sahip tam genişlikte zengin metin kutusu)
+        if contact_info_html:
+            contact_table = Table([[Paragraph(contact_info_html, self.styles["ConditionText"])]], colWidths=[usable_width])
+            contact_table.setStyle(
+                TableStyle([
+                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1A202C")),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFFFFF")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ])
+            )
+            elements.append(contact_table)
+
+        # 2. Ticari Koşullar tablosu
         if table_rows:
+            if elements:
+                elements.append(Spacer(1, 4))
             label_col_w = 120
             text_col_w = usable_width - label_col_w
             cond_table = Table(table_rows, colWidths=[label_col_w, text_col_w])
@@ -984,9 +1031,9 @@ class PdfService:
             )
             elements.append(cond_table)
 
-        # Ek Alan kutusu (Sabit başlıksız, sadece kullanıcının girdiği metin, tam genişlikte kenarlıklı kutu)
+        # 3. Ek Alan kutusu (Sabit başlıksız, sadece kullanıcının girdiği metin, tam genişlikte kenarlıklı kutu)
         if add_notes_html:
-            if table_rows:
+            if elements:
                 elements.append(Spacer(1, 4))
             notes_table = Table([[Paragraph(add_notes_html, self.styles["ConditionText"])]], colWidths=[usable_width])
             notes_table.setStyle(
@@ -1209,7 +1256,15 @@ class PdfService:
             for note in stg_notes:
                 elements.append(Paragraph(f"<b>{note}</b>", self.styles["TemplateNote"]))
 
-        # 3. Ürün Bilgileri (Seçilen alt ögeler)
+        # 3. Hasat ve Olgunlaşma Takvimi (HASAT VE OLGUNLAŞMA TAKVİMİ / HARVEST AND MATURATION CALENDAR)
+        if getattr(offer, "template_harvest_calendar", False):
+            if elements:
+                elements.append(Spacer(1, 14))
+            scale = float(getattr(offer, "pdf_font_size", 8.0)) / 8.0
+            harvest_elements = self._build_harvest_calendar(offer, usable_width, scale)
+            elements.extend(harvest_elements)
+
+        # 4. Ürün Bilgileri (Seçilen alt ögeler)
         if offer.template_product_info and offer.template_product_info_items:
             # Önceki hazır şablonlar varsa araya boşluk
             if elements:
@@ -1277,6 +1332,269 @@ class PdfService:
                     )
                     elements.append(box_table)
                     elements.append(Spacer(1, 8))
+
+        return elements
+
+    def _build_harvest_calendar(self, offer: Offer, usable_width: float, scale: float) -> list[Any]:
+        """ReportLab Table ve dinamik Gantt şeması yapısıyla Hasat ve Olgunlaşma Takvimini üretir."""
+        elements: list[Any] = []
+        is_en = offer.document_language == DocumentLanguage.EN
+        lang_key = "en" if is_en else "tr"
+
+        data = load_harvest_calendar()
+
+        title_text = data.get("title", {}).get(lang_key, "HASAT VE OLGUNLAŞMA TAKVİMİ")
+        elements.append(Paragraph(f"<b>{title_text}</b>", self.styles["TemplateTitle"]))
+        elements.append(Spacer(1, 6))
+
+        # 1. sütun geniş (ürün/cins), diğer 12 sütun aylara eşit ve dengeli dağıtılır
+        col0_w = max(145.0, round(usable_width * 0.28, 1))
+        month_col_w = (usable_width - col0_w) / 12.0
+        col_widths = [col0_w] + [month_col_w] * 12
+
+        th_style = self.styles["TableHeader"].clone(
+            "HARVEST_TH",
+            fontSize=max(4.5, round(5.4 * scale, 1)),
+            leading=max(5.5, round(6.8 * scale, 1)),
+            alignment=TA_CENTER,
+        )
+        season_th_style = self.styles["TableHeader"].clone(
+            "HARVEST_SEASON_TH",
+            fontSize=max(5.0, round(6.0 * scale, 1)),
+            leading=max(6.0, round(7.4 * scale, 1)),
+            alignment=TA_CENTER,
+            textColor=colors.HexColor("#2B6CB0"),
+        )
+        prod_header_style = self.styles["TableHeader"].clone(
+            "HARVEST_PROD_HEADER",
+            fontSize=max(5.5, round(6.5 * scale, 1)),
+            leading=max(6.8, round(8.0 * scale, 1)),
+            alignment=TA_CENTER,
+        )
+        tl_style = self.styles["TableCellLeft"].clone(
+            "HARVEST_TL",
+            fontSize=max(5.0, round(5.8 * scale, 1)),
+            leading=max(6.0, round(7.2 * scale, 1)),
+        )
+        gantt_style = self.styles["TableCellCenter"].clone(
+            "HARVEST_GANTT",
+            fontSize=max(4.8, round(5.6 * scale, 1)),
+            leading=max(5.8, round(7.0 * scale, 1)),
+            alignment=TA_CENTER,
+            textColor=colors.HexColor("#1A202C"),
+        )
+
+        table_data: list[list[Any]] = []
+        table_style: list[tuple[Any, ...]] = [
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#1A202C")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+            ("BACKGROUND", (0, 0), (-1, 1), colors.HexColor("#F7FAFC")),
+            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F7FAFC")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ("SPAN", (0, 0), (0, 1)),  # Ürün / Cins başlığı 0. ve 1. satırları birleştirir
+        ]
+
+        # 1. Satır: Aylar
+        prod_header = data.get("product_header", {}).get(lang_key, "Ürün / Cins")
+        months = data.get("months", {}).get(lang_key, [])
+        month_row: list[Any] = [Paragraph(f"<b>{prod_header}</b>", prod_header_style)]
+        for m in months:
+            month_row.append(Paragraph(f"<b>{m}</b>", th_style))
+        table_data.append(month_row)
+
+        # 2. Satır: Mevsimler
+        season_row: list[Any] = [""] * 13
+        seasons = data.get("seasons", {}).get(lang_key, [])
+        for s in seasons:
+            s_name = s.get("name", "")
+            s_start = s.get("start_col", 1)
+            s_end = s.get("end_col", 3)
+            season_row[s_start] = Paragraph(f"<b>{s_name}</b>", season_th_style)
+            table_style.append(("SPAN", (s_start, 1), (s_end, 1)))
+        table_data.append(season_row)
+
+        # Veri Satırları (Meyveler ve Gantt Dönemleri)
+        items = data.get("items", [])
+        for idx, item in enumerate(items):
+            row_idx = 2 + idx
+            item_name = item.get("name", {}).get(lang_key, "")
+            icon_file = item.get("icon", "")
+
+            # İkon kontrolü (Assets altındaki meyve ikonu)
+            icon_path = HARVEST_DIR / icon_file
+            if not icon_path.exists() and "valenica" in icon_file:
+                alt = HARVEST_DIR / icon_file.replace("valenica", "valencia")
+                if alt.exists():
+                    icon_path = alt
+            elif not icon_path.exists() and "valencia" in icon_file:
+                alt = HARVEST_DIR / icon_file.replace("valencia", "valenica")
+                if alt.exists():
+                    icon_path = alt
+
+            if icon_path.exists():
+                icon_img = RLImage(str(icon_path), width=15, height=15)
+                name_p = Paragraph(f"<b>{item_name}</b>", tl_style)
+                inner_table = Table([[icon_img, name_p]], colWidths=[18, col0_w - 22])
+                inner_table.setStyle(
+                    TableStyle([
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                    ])
+                )
+                cell_prod = inner_table
+            else:
+                cell_prod = Paragraph(f"<b>{item_name}</b>", tl_style)
+
+            data_row: list[Any] = [cell_prod] + [""] * 12
+            schedule = item.get("schedule", {}).get(lang_key, [])
+
+            # Ardışık dolu dönemleri bul (Gantt SPAN & Renklendirme)
+            spans = self._extract_consecutive_spans(schedule)
+            for start_idx, end_idx, text in spans:
+                start_col = start_idx + 1
+                end_col = end_idx + 1
+
+                data_row[start_col] = Paragraph(f"<b>{text}</b>", gantt_style)
+                if start_col < end_col:
+                    table_style.append(("SPAN", (start_col, row_idx), (end_col, row_idx)))
+                table_style.append(("BACKGROUND", (start_col, row_idx), (end_col, row_idx), colors.HexColor("#E2E8F0")))
+
+            table_data.append(data_row)
+
+        harvest_table = Table(table_data, colWidths=col_widths)
+        harvest_table.setStyle(TableStyle(table_style))
+        elements.append(harvest_table)
+
+        # Dipnot
+        note_text = data.get("note", {}).get(lang_key, "")
+        if note_text:
+            elements.append(Spacer(1, 4))
+            elements.append(Paragraph(f"<b>{note_text}</b>", self.styles["TemplateNote"]))
+
+        return elements
+
+    @staticmethod
+    def _extract_consecutive_spans(schedule: list[str]) -> list[tuple[int, int, str]]:
+        """Aylık dizilimdeki ardışık aynı dolu değerlerin başlangıç/bitiş indekslerini döndürür."""
+        spans: list[tuple[int, int, str]] = []
+        n = len(schedule)
+        i = 0
+        while i < n:
+            val = (schedule[i] or "").strip()
+            if val:
+                start = i
+                while i + 1 < n and ((schedule[i + 1] or "").strip() == val):
+                    i += 1
+                spans.append((start, i, val))
+            i += 1
+        return spans
+
+    def _build_custom_page(self, offer: Offer, page: CustomPage, usable_width: float) -> list[Any]:
+        """Kullanıcının eklediği boş/özel ek sayfayı (Appendix) ReportLab akış elemanlarına dönüştürür."""
+        elements: list[Any] = []
+        is_en = offer.document_language == DocumentLanguage.EN
+
+        # 1. Üst Mini-Header Çubuğu (Brand / Şirket Adı ve Teklif / Ek Bilgisi)
+        companies = load_companies()
+        company = next((c for c in companies if c.id == offer.company_id), companies[0])
+        brand_prefix = "Juresh / " if offer.brand_logo_visible else ""
+        header_left = f"{brand_prefix}{company.display_name}"
+        header_right = (
+            f"{('OFFER NO:' if is_en else 'TEKLİF NO:')} {offer.offer_number}"
+            if offer.offer_number
+            else ("APPENDIX" if is_en else "EK SAYFA")
+        )
+
+        top_table = Table(
+            [
+                [
+                    Paragraph(f"<b>{header_left}</b>", self.styles["TableCellLeft"]),
+                    Paragraph(f"<font color='#718096'>{header_right}</font>", self.styles["TableCellRight"]),
+                ]
+            ],
+            colWidths=[usable_width * 0.65, usable_width * 0.35],
+        )
+        top_table.setStyle(
+            TableStyle([
+                ("LINEBELOW", (0, 0), (-1, -1), 0.75, colors.HexColor("#CBD5E0")),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ])
+        )
+        elements.append(top_table)
+        elements.append(Spacer(1, 14))
+
+        # 2. Sayfa Başlığı (Varsa)
+        if page.title and page.title.strip():
+            title_text = page.title.strip().replace("\n", "<br/>")
+            title_p = Paragraph(
+                f"<b>{title_text}</b>",
+                ParagraphStyle(
+                    "CustomPageTitle",
+                    parent=self.styles["TemplateTitle"],
+                    fontName="DejaVuSans-Bold",
+                    fontSize=12,
+                    leading=16,
+                    alignment=TA_CENTER,
+                    textColor=colors.HexColor("#1A365D"),
+                ),
+            )
+            elements.append(title_p)
+            elements.append(Spacer(1, 12))
+
+        # 3. Görsel (Varsa)
+        if page.image_path and Path(page.image_path).exists():
+            try:
+                from PIL import Image as PILImage
+
+                with PILImage.open(page.image_path) as im:
+                    orig_w, orig_h = im.size
+                if orig_w > 0 and orig_h > 0:
+                    aspect = orig_w / float(orig_h)
+
+                    # Metin de varsa görsel yüksekliğini 420 pt ile sınırla, metin yoksa 540 pt
+                    has_text = bool(page.content_html and page.content_html.strip())
+                    max_img_h = 420.0 if has_text else 540.0
+                    max_img_w = usable_width
+
+                    target_w = max_img_w
+                    target_h = target_w / aspect
+                    if target_h > max_img_h:
+                        target_h = max_img_h
+                        target_w = target_h * aspect
+
+                    rl_img = RLImage(str(page.image_path), width=target_w, height=target_h)
+                    rl_img.hAlign = "CENTER"
+                    elements.append(rl_img)
+                    elements.append(Spacer(1, 12))
+            except Exception:
+                pass
+
+        # 4. Zengin Metin (Varsa)
+        if page.content_html and page.content_html.strip():
+            text_rl = qt_html_to_reportlab(page.content_html)
+            if text_rl:
+                f_size = float(page.font_size) if page.font_size else 8.0
+                leading = max(8.0, round(f_size * 1.35, 1))
+                text_style = ParagraphStyle(
+                    f"CustomPageText_{f_size}",
+                    fontName="DejaVuSans",
+                    fontSize=f_size,
+                    leading=leading,
+                    textColor=colors.HexColor("#2D3748"),
+                    alignment=TA_LEFT,
+                )
+                elements.append(Paragraph(text_rl, text_style))
 
         return elements
 

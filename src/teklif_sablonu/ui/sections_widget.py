@@ -147,7 +147,12 @@ class SingleSectionCard(QWidget):
             self.rich_editor = QTextEdit()
             self.rich_editor.setEnabled(False)
             self.rich_editor.setMaximumHeight(140)
-            self.rich_editor.setPlaceholderText("İsteğe bağlı zengin metin notları...")
+            placeholder = (
+                "İsteğe bağlı teklif iletişim bilgileri..."
+                if self.section_key == SectionKey.CONTACT_INFO
+                else "İsteğe bağlı zengin metin notları..."
+            )
+            self.rich_editor.setPlaceholderText(placeholder)
             self.toolbar.editor = self.rich_editor
             self.rich_editor.textChanged.connect(self._on_text_changed)
             layout.addWidget(self.rich_editor)
@@ -244,15 +249,22 @@ class SectionsWidget(QWidget):
         defaults = load_section_defaults()
 
         sections_info = [
-            (SectionKey.DELIVERY_ADDRESS, 0, 0),
-            (SectionKey.ORDER_NOTIFICATION, 0, 1),
-            (SectionKey.DELIVERY_METHOD, 1, 0),
-            (SectionKey.PAYMENT_TERMS, 1, 1),
-            (SectionKey.STORAGE_CONDITIONS, 2, 0),
-            (SectionKey.ADDITIONAL_NOTES, 2, 1),
+            (SectionKey.CONTACT_INFO, 0, 0, 1, 2),
+            (SectionKey.DELIVERY_ADDRESS, 1, 0, 1, 1),
+            (SectionKey.ORDER_NOTIFICATION, 1, 1, 1, 1),
+            (SectionKey.DELIVERY_METHOD, 2, 0, 1, 1),
+            (SectionKey.PAYMENT_TERMS, 2, 1, 1, 1),
+            (SectionKey.STORAGE_CONDITIONS, 3, 0, 1, 1),
+            (SectionKey.ADDITIONAL_NOTES, 3, 1, 1, 1),
         ]
 
-        for s_key, r, c in sections_info:
+        for item in sections_info:
+            s_key = item[0]
+            r = item[1]
+            c = item[2]
+            row_span = item[3] if len(item) > 3 else 1
+            col_span = item[4] if len(item) > 4 else 1
+
             d_conf = defaults.get(s_key.value)
             label = d_conf.label if d_conf else s_key.label_tr
             d_text = d_conf.default_text if d_conf else ""
@@ -268,7 +280,7 @@ class SectionsWidget(QWidget):
             )
             card.changed.connect(self._on_changed)
             self._cards[s_key] = card
-            grid.addWidget(card, r, c)
+            grid.addWidget(card, r, c, row_span, col_span)
 
         main_layout.addWidget(group)
 

@@ -17,10 +17,11 @@ from teklif_sablonu.domain.enums import (
     QuantityUnit,
     SectionKey,
 )
-from teklif_sablonu.domain.models import Offer, OfferItem, OfferSection
+from teklif_sablonu.domain.models import CustomPage, Offer, OfferItem, OfferSection
 from teklif_sablonu.services.offer_service import OfferService
 from teklif_sablonu.ui.archive_widget import ArchiveWidget
 from teklif_sablonu.ui.column_selector_widget import ColumnSelectorWidget
+from teklif_sablonu.ui.custom_pages_widget import CustomPagesWidget
 from teklif_sablonu.ui.header_widget import HeaderWidget
 from teklif_sablonu.ui.items_table_widget import ItemsTableWidget
 from teklif_sablonu.ui.main_window import MainWindow
@@ -91,10 +92,15 @@ def test_column_selector_dependencies() -> None:
     selector = ColumnSelectorWidget()
 
     # 1. Zorunlu sütunlar kapalı olamaz
-    for col in (ColumnKey.DESCRIPTION, ColumnKey.QUANTITY, ColumnKey.UNIT_PRICE, ColumnKey.TOTAL_AMOUNT):
+    for col in (ColumnKey.DESCRIPTION, ColumnKey.QUANTITY, ColumnKey.UNIT_PRICE):
         cb = selector._checkboxes[col]
         assert cb.isChecked() is True
         assert cb.isEnabled() is False
+
+    # Toplam Tutar varsayılan açık ancak kullanıcı tarafından kapatılabilir olmalıdır
+    total_cb = selector._checkboxes[ColumnKey.TOTAL_AMOUNT]
+    assert total_cb.isChecked() is True
+    assert total_cb.isEnabled() is True
 
     # 2. KDV kapalıyken KDV sütunları devre dışı ve işaretsiz olmalı
     selector.update_feature_dependencies(vat_enabled=False, discount_enabled=False)
@@ -248,6 +254,18 @@ def test_sections_widget_and_rich_text() -> None:
     addr_card.set_enabled(True)
     assert addr_card.is_enabled() is True
     assert "Tek bir merkezi noktaya" in addr_card.get_text()
+
+    # Teklif İletişim Bilgileri (zengin metin, 5000 karakter, en üstte konuşlu)
+    contact_card = sec_widget._cards[SectionKey.CONTACT_INFO]
+    assert contact_card.max_chars == 5000
+    assert contact_card.is_rich_text is True
+    assert contact_card.is_enabled() is False
+    contact_card.set_enabled(True)
+    assert contact_card.is_enabled() is True
+    assert contact_card.rich_editor is not None
+    contact_card.rich_editor.setPlainText("Yetkili: Test Kişisi - Tel: 0555 123 4567")
+    contact_card.toolbar._toggle_bold()
+    contact_card.toolbar._toggle_italic()
 
     # Ek Alan (zengin metin) araç çubuğu butonları
     notes_card = sec_widget._cards[SectionKey.ADDITIONAL_NOTES]
@@ -403,7 +421,7 @@ def test_ui_page_orientation_and_copyright() -> None:
     # 1. Copyright ve Sürüm etiketi kontrolü
     assert hasattr(win, "copyright_lbl")
     assert "Berkay Korkut" in win.copyright_lbl.text()
-    assert "v1.3.3" in win.copyright_lbl.text()
+    assert "v1.4.0" in win.copyright_lbl.text()
 
     # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
     assert win.header_widget.get_page_orientation() == PageOrientation.AUTO
@@ -440,6 +458,7 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     widget = ReadyTemplatesWidget()
     assert widget.is_packaging_enabled() is False
     assert widget.is_storage_enabled() is False
+    assert widget.is_harvest_enabled() is False
 
     signals_received = []
     widget.templates_changed.connect(lambda: signals_received.append(True))
@@ -451,6 +470,10 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     widget.set_storage_enabled(True)
     assert widget.is_storage_enabled() is True
     assert len(signals_received) == 2
+
+    widget.set_harvest_enabled(True)
+    assert widget.is_harvest_enabled() is True
+    assert len(signals_received) == 3
 
     # Ürün Bilgileri testi
     assert widget.is_product_info_enabled() is False
@@ -473,6 +496,7 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     widget.clear()
     assert widget.is_packaging_enabled() is False
     assert widget.is_storage_enabled() is False
+    assert widget.is_harvest_enabled() is False
     assert widget.is_product_info_enabled() is False
     assert widget.sub_container.isHidden() is True
 
@@ -487,16 +511,19 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     assert hasattr(win, "ready_templates_widget")
     assert win.ready_templates_widget.is_packaging_enabled() is False
     assert win.ready_templates_widget.is_storage_enabled() is False
+    assert win.ready_templates_widget.is_harvest_enabled() is False
     assert win.ready_templates_widget.is_product_info_enabled() is False
 
     # Checkbox'ları işaretleyip to_offer() ile Offer'a yansıdığını doğrula
     win.ready_templates_widget.set_packaging_enabled(True)
     win.ready_templates_widget.set_storage_enabled(True)
+    win.ready_templates_widget.set_harvest_enabled(True)
     win.ready_templates_widget.set_product_info_enabled(True)
     win.ready_templates_widget.set_selected_product_info_items(["quality_guarantee", "lemonade_extract"])
     offer = win.to_offer()
     assert offer.template_packaging_info is True
     assert offer.template_storage_conditions is True
+    assert offer.template_harvest_calendar is True
     assert offer.template_product_info is True
     assert offer.template_product_info_items == ["quality_guarantee", "lemonade_extract"]
 
@@ -504,12 +531,14 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     offer2 = Offer(
         template_packaging_info=False,
         template_storage_conditions=True,
+        template_harvest_calendar=False,
         template_product_info=True,
         template_product_info_items=["orange_juice"],
     )
     win.load_offer(offer2)
     assert win.ready_templates_widget.is_packaging_enabled() is False
     assert win.ready_templates_widget.is_storage_enabled() is True
+    assert win.ready_templates_widget.is_harvest_enabled() is False
     assert win.ready_templates_widget.is_product_info_enabled() is True
     assert win.ready_templates_widget.get_selected_product_info_items() == ["orange_juice"]
 
@@ -517,6 +546,7 @@ def test_ready_templates_widget_and_main_window_integration() -> None:
     win.clear_offer()
     assert win.ready_templates_widget.is_packaging_enabled() is False
     assert win.ready_templates_widget.is_storage_enabled() is False
+    assert win.ready_templates_widget.is_harvest_enabled() is False
     assert win.ready_templates_widget.is_product_info_enabled() is False
 
     QApplication.processEvents()
@@ -555,3 +585,93 @@ def test_ui_pdf_font_size() -> None:
 
     QApplication.processEvents()
     win.close()
+
+
+def test_custom_pages_widget_and_main_window() -> None:
+    """CustomPagesWidget sayfa ekleme/silme/taşıma ve MainWindow Offer senkronizasyonu testleri."""
+    import sqlite3
+    from teklif_sablonu.storage.repository import SqliteOfferRepository
+
+    # 1. CustomPagesWidget bağımsız testi
+    widget = CustomPagesWidget()
+    assert len(widget.get_pages()) == 0
+
+    # Sayfa 1 ekle
+    card1 = widget.add_page()
+    card1.title_input.setText("Sertifika 1")
+    card1.text_editor.setPlainText("Metin 1")
+
+    # Sayfa 2 ekle
+    card2 = widget.add_page()
+    card2.title_input.setText("Sertifika 2")
+    card2.text_editor.setPlainText("Metin 2")
+
+    pages = widget.get_pages()
+    assert len(pages) == 2
+    assert pages[0].title == "Sertifika 1"
+    assert pages[1].title == "Sertifika 2"
+
+    # Sayfa 2'yi yukarı taşı
+    card2.move_up_requested.emit(card2)
+    pages_reordered = widget.get_pages()
+    assert pages_reordered[0].title == "Sertifika 2"
+    assert pages_reordered[1].title == "Sertifika 1"
+
+    # Sayfa 2'yi (artık ilk sırada) aşağı taşı
+    card2.move_down_requested.emit(card2)
+    pages_reordered2 = widget.get_pages()
+    assert pages_reordered2[0].title == "Sertifika 1"
+    assert pages_reordered2[1].title == "Sertifika 2"
+
+    # Silme
+    card1.delete_requested.emit(card1)
+    QApplication.processEvents()
+    pages_after_del = widget.get_pages()
+    assert len(pages_after_del) == 1
+    assert pages_after_del[0].title == "Sertifika 2"
+
+    widget.close()
+    widget.deleteLater()
+    QApplication.processEvents()
+
+    # 2. MainWindow entegrasyonu
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    service = OfferService(SqliteOfferRepository(conn))
+    win = MainWindow(offer_service=service)
+
+    assert hasattr(win, "custom_pages_widget")
+    assert len(win.custom_pages_widget.get_pages()) == 0
+
+    # to_offer()
+    c = win.custom_pages_widget.add_page()
+    c.title_input.setText("Örnek Ek Sayfa")
+    c.text_editor.setPlainText("Açıklama")
+    offer = win.to_offer()
+    assert len(offer.custom_pages) == 1
+    assert offer.custom_pages[0].title == "Örnek Ek Sayfa"
+
+    # load_offer()
+    new_offer = Offer(
+        recipient_name="Test",
+        custom_pages=[
+            CustomPage(title="Yüklenen Sayfa A", content_html="<p>A</p>", font_size=7.5),
+            CustomPage(title="Yüklenen Sayfa B", content_html="<p>B</p>", font_size=8.5),
+        ],
+    )
+    win.load_offer(new_offer)
+    loaded_pages = win.custom_pages_widget.get_pages()
+    assert len(loaded_pages) == 2
+    assert loaded_pages[0].title == "Yüklenen Sayfa A"
+    assert abs(loaded_pages[0].font_size - 7.5) < 0.05
+    assert loaded_pages[1].title == "Yüklenen Sayfa B"
+    assert abs(loaded_pages[1].font_size - 8.5) < 0.05
+
+    # clear_offer()
+    win.clear_offer()
+    assert len(win.custom_pages_widget.get_pages()) == 0
+
+    win.close()
+    win.deleteLater()
+    QApplication.processEvents()
+

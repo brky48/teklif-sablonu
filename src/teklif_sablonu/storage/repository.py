@@ -17,7 +17,7 @@ from teklif_sablonu.domain.enums import (
     QuantityUnit,
     SectionKey,
 )
-from teklif_sablonu.domain.models import Offer, OfferItem, OfferSection
+from teklif_sablonu.domain.models import CustomPage, Offer, OfferItem, OfferSection
 from teklif_sablonu.storage.connection import get_connection
 from teklif_sablonu.storage.migrations import apply_migrations
 
@@ -123,9 +123,10 @@ class SqliteOfferRepository(OfferRepository):
                             discount_enabled, brand_logo_visible, page_orientation, document_language,
                             pdf_font_size,
                             template_packaging_info, template_storage_conditions,
+                            template_harvest_calendar,
                             template_product_info, template_product_info_items,
                             selected_columns, source_offer_id, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             offer_number,
@@ -143,6 +144,7 @@ class SqliteOfferRepository(OfferRepository):
                             float(offer.pdf_font_size),
                             1 if offer.template_packaging_info else 0,
                             1 if offer.template_storage_conditions else 0,
+                            1 if offer.template_harvest_calendar else 0,
                             1 if offer.template_product_info else 0,
                             json.dumps(offer.template_product_info_items),
                             sel_cols_json,
@@ -177,6 +179,7 @@ class SqliteOfferRepository(OfferRepository):
                             pdf_font_size = ?,
                             template_packaging_info = ?,
                             template_storage_conditions = ?,
+                            template_harvest_calendar = ?,
                             template_product_info = ?,
                             template_product_info_items = ?,
                             selected_columns = ?,
@@ -198,6 +201,7 @@ class SqliteOfferRepository(OfferRepository):
                             float(offer.pdf_font_size),
                             1 if offer.template_packaging_info else 0,
                             1 if offer.template_storage_conditions else 0,
+                            1 if offer.template_harvest_calendar else 0,
                             1 if offer.template_product_info else 0,
                             json.dumps(offer.template_product_info_items),
                             sel_cols_json,
@@ -211,6 +215,7 @@ class SqliteOfferRepository(OfferRepository):
                     # Eski satırları ve koşulları temizle
                     self.conn.execute("DELETE FROM offer_items WHERE offer_id = ?", (offer_id,))
                     self.conn.execute("DELETE FROM offer_sections WHERE offer_id = ?", (offer_id,))
+                    self.conn.execute("DELETE FROM offer_custom_pages WHERE offer_id = ?", (offer_id,))
 
                 # Ürün satırlarını ekle
                 for pos, item in enumerate(offer.items):
@@ -260,6 +265,27 @@ class SqliteOfferRepository(OfferRepository):
                     sec.id = sec_cursor.lastrowid
                     sec.offer_id = offer_id
                     sec.position = pos
+
+                # Özel / Ek sayfaları ekle
+                for pos, page in enumerate(offer.custom_pages):
+                    page_cursor = self.conn.execute(
+                        """
+                        INSERT INTO offer_custom_pages (
+                            offer_id, position, title, content_html, image_path, font_size
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            offer_id,
+                            pos,
+                            page.title or "",
+                            page.content_html or "",
+                            page.image_path or "",
+                            float(page.font_size) if page.font_size else 8.0,
+                        ),
+                    )
+                    page.id = page_cursor.lastrowid
+                    page.offer_id = offer_id
+                    page.position = pos
 
             return offer
         except Exception as exc:
@@ -388,6 +414,7 @@ class SqliteOfferRepository(OfferRepository):
 
         template_packaging_info = bool(row["template_packaging_info"]) if "template_packaging_info" in row.keys() else False
         template_storage_conditions = bool(row["template_storage_conditions"]) if "template_storage_conditions" in row.keys() else False
+        template_harvest_calendar = bool(row["template_harvest_calendar"]) if "template_harvest_calendar" in row.keys() else False
         template_product_info = bool(row["template_product_info"]) if "template_product_info" in row.keys() else False
         template_product_info_items: list[str] = []
         if "template_product_info_items" in row.keys() and row["template_product_info_items"]:
@@ -397,6 +424,33 @@ class SqliteOfferRepository(OfferRepository):
                 template_product_info_items = []
 
         pdf_font_size = float(row["pdf_font_size"]) if "pdf_font_size" in row.keys() and row["pdf_font_size"] is not None else 8.0
+
+        # Özel / Ek sayfaları getir
+        custom_pages: list[CustomPage] = []
+        try:
+            page_cursor = self.conn.execute(
+                """
+                SELECT id, position, title, content_html, image_path, font_size
+                FROM offer_custom_pages
+                WHERE offer_id = ?
+                ORDER BY position ASC, id ASC
+                """,
+                (offer_id,),
+            )
+            custom_pages = [
+                CustomPage(
+                    id=p_row["id"],
+                    offer_id=offer_id,
+                    position=p_row["position"],
+                    title=p_row["title"],
+                    content_html=p_row["content_html"],
+                    image_path=p_row["image_path"],
+                    font_size=float(p_row["font_size"]),
+                )
+                for p_row in page_cursor.fetchall()
+            ]
+        except sqlite3.OperationalError:
+            custom_pages = []
 
         return Offer(
             id=offer_id,
@@ -415,11 +469,13 @@ class SqliteOfferRepository(OfferRepository):
             pdf_font_size=pdf_font_size,
             template_packaging_info=template_packaging_info,
             template_storage_conditions=template_storage_conditions,
+            template_harvest_calendar=template_harvest_calendar,
             template_product_info=template_product_info,
             template_product_info_items=template_product_info_items,
             selected_columns=selected_columns,
             items=items,
             sections=sections,
+            custom_pages=custom_pages,
             source_offer_id=row["source_offer_id"],
             created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
             updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None,

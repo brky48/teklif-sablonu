@@ -49,6 +49,8 @@ def test_document_language_enum_and_labels():
     # Koşul başlıkları
     assert SectionKey.DELIVERY_ADDRESS.label(DocumentLanguage.EN) == "Delivery Address"
     assert SectionKey.PAYMENT_TERMS.label(DocumentLanguage.EN) == "Payment Terms"
+    assert SectionKey.CONTACT_INFO.label(DocumentLanguage.EN) == "Quotation Contact Information"
+    assert SectionKey.CONTACT_INFO.label(DocumentLanguage.TR) == "Teklif İletişim Bilgileri"
 
 
 def test_repository_save_and_retrieve_document_language():
@@ -297,3 +299,91 @@ def test_ui_header_widget_and_main_window_language(qtbot):
     # Sıfırlama
     mw.clear_offer()
     assert mw.header_widget.get_document_language() == DocumentLanguage.TR
+
+
+def test_contact_info_pdf_and_excel_integration(tmp_path: Path):
+    """Teklif İletişim Bilgileri (Quotation Contact Information) alanı PDF ve Excel çıktısında doğru yerleştirilmelidir."""
+    from reportlab.platypus import Spacer, Table
+
+    offer = Offer(
+        offer_number="20261028-001",
+        offer_date=date(2026, 10, 28),
+        company_id="endemiks_tarim",
+        recipient_name="Mega Tarım A.Ş.",
+        document_language=DocumentLanguage.TR,
+        items=[
+            OfferItem(
+                product_code="P-01",
+                description="Özel Gübre",
+                quantity=Decimal("10"),
+                unit_price=Decimal("100.00"),
+            )
+        ],
+        sections=[
+            OfferSection(
+                section_key=SectionKey.CONTACT_INFO,
+                text="<b>Yetkili:</b> Ayşe Hanım | <b>E-posta:</b> info@endemiks.com",
+                enabled=True,
+                rich_text=True,
+            ),
+            OfferSection(
+                section_key=SectionKey.DELIVERY_METHOD,
+                text="Fabrika teslimidir.",
+                enabled=True,
+            ),
+            OfferSection(
+                section_key=SectionKey.ADDITIONAL_NOTES,
+                text="<p>Özel ambalajlama yapılacaktır.</p>",
+                enabled=True,
+                rich_text=True,
+            ),
+        ],
+    )
+
+    pdf_service = PdfService()
+    conds_block = pdf_service._build_conditions(offer, 500)
+    assert conds_block is not None
+    flowables = getattr(conds_block, "_content", getattr(conds_block, "flowables", []))
+
+    # Elemanlar sırasıyla: Table (Contact Info), Spacer(4), Table (Commercial Conditions), Spacer(4), Table (Ek Alan)
+    assert len(flowables) == 5
+    assert isinstance(flowables[0], Table)
+    assert isinstance(flowables[1], Spacer)
+    assert flowables[1].height == 4
+    assert isinstance(flowables[2], Table)
+    assert isinstance(flowables[3], Spacer)
+    assert flowables[3].height == 4
+    assert isinstance(flowables[4], Table)
+
+    # İletişim bilgisi metni ilk tabloda yer almalı
+    contact_cell_text = str(flowables[0]._cellvalues)
+    assert "Yetkili:" in contact_cell_text
+    assert "info@endemiks.com" in contact_cell_text
+
+    # PDF üretimi hatasız tamamlanmalı
+    pdf_out = tmp_path / "contact_test.pdf"
+    pdf_res = pdf_service.generate_pdf(offer, pdf_out)
+    assert pdf_res.exists()
+
+    # Excel üretimi ve sıralama kontrolü
+    excel_service = ExcelService()
+    xlsx_out = tmp_path / "contact_test.xlsx"
+    xlsx_res = excel_service.generate_excel(offer, xlsx_out)
+    assert xlsx_res.exists()
+
+    wb = openpyxl.load_workbook(str(xlsx_res), data_only=True)
+    ws = wb.active
+
+    contact_row = None
+    terms_title_row = None
+    for r in range(1, ws.max_row + 1):
+        val = ws.cell(row=r, column=2).value
+        if val and "info@endemiks.com" in str(val):
+            contact_row = r
+        if val and "TEKLİF KOŞULLARI VE AÇIKLAMALAR" in str(val):
+            terms_title_row = r
+
+    assert contact_row is not None
+    assert terms_title_row is not None
+    # İletişim bilgisi, Ticari Koşullar başlığından önce konuşlanmalı
+    assert contact_row < terms_title_row

@@ -3,6 +3,7 @@ name: Build macOS App
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -10,6 +11,8 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Kaynak Kodunu Çek
@@ -47,3 +50,11 @@ jobs:
           name: TeklifSablonu-macOS
           path: dist/TeklifSablonu-macOS.zip
           if-no-files-found: error
+
+      - name: GitHub Release'e Yayınla
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TeklifSablonu-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

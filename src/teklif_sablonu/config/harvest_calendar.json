@@ -1,0 +1,101 @@
+{
+  "title": {
+    "tr": "HASAT VE OLGUNLAŞMA TAKVİMİ",
+    "en": "HARVEST AND MATURATION CALENDAR"
+  },
+  "note": {
+    "tr": "* İklim ve bölge koşullarına göre hasat tarihlerinde hafif değişiklikler olabilir.",
+    "en": "* Harvest dates may vary slightly depending on climate and regional conditions."
+  },
+  "product_header": {
+    "tr": "Ürün / Cins",
+    "en": "Product / Variety"
+  },
+  "months": {
+    "tr": ["EYLÜL", "EKİM", "KASIM", "ARALIK", "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS"],
+    "en": ["SEP", "OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG"]
+  },
+  "seasons": {
+    "tr": [
+      {"name": "Sonbahar", "start_col": 1, "end_col": 3},
+      {"name": "Kış", "start_col": 4, "end_col": 6},
+      {"name": "İlkbahar", "start_col": 7, "end_col": 9},
+      {"name": "Yaz", "start_col": 10, "end_col": 12}
+    ],
+    "en": [
+      {"name": "Autumn", "start_col": 1, "end_col": 3},
+      {"name": "Winter", "start_col": 4, "end_col": 6},
+      {"name": "Spring", "start_col": 7, "end_col": 9},
+      {"name": "Summer", "start_col": 10, "end_col": 12}
+    ]
+  },
+  "items": [
+    {
+      "icon": "nar.png",
+      "name": {
+        "tr": "NAR",
+        "en": "POMEGRANATE"
+      },
+      "schedule": {
+        "tr": ["", "Hasat", "Hasat", "", "", "", "", "", "", "", "", ""],
+        "en": ["", "Harvest", "Harvest", "", "", "", "", "", "", "", "", ""]
+      }
+    },
+    {
+      "icon": "limon_enterdonat.png",
+      "name": {
+        "tr": "LİMON (Enterdonat - Erkenci)",
+        "en": "LEMON (Interdonato - Early)"
+      },
+      "schedule": {
+        "tr": ["", "Erkenci", "Erkenci", "Erkenci", "Erkenci", "", "", "", "", "", "", ""],
+        "en": ["", "Early", "Early", "Early", "Early", "", "", "", "", "", "", ""]
+      }
+    },
+    {
+      "icon": "limon_lamas.png",
+      "name": {
+        "tr": "LİMON (Lamas - Yataklık/Geçci)",
+        "en": "LEMON (Lamas - Main/Late)"
+      },
+      "schedule": {
+        "tr": ["", "", "Ana Hasat", "Ana Hasat", "Ana Hasat", "Ana Hasat", "Ana Hasat", "Ana Hasat", "Ana Hasat", "", "", ""],
+        "en": ["", "", "Main Harvest", "Main Harvest", "Main Harvest", "Main Harvest", "Main Harvest", "Main Harvest", "Main Harvest", "", "", ""]
+      }
+    },
+    {
+      "icon": "greyfurt.png",
+      "name": {
+        "tr": "GREYFURT",
+        "en": "GRAPEFRUIT"
+      },
+      "schedule": {
+        "tr": ["", "", "Hasat", "Hasat", "Hasat", "Hasat", "Hasat", "Hasat", "", "", "", ""],
+        "en": ["", "", "Harvest", "Harvest", "Harvest", "Harvest", "Harvest", "Harvest", "", "", "", ""]
+      }
+    },
+    {
+      "icon": "portakal_washington.png",
+      "name": {
+        "tr": "PORTAKAL (Washington - Erkenci)",
+        "en": "ORANGE (Washington - Early)"
+      },
+      "schedule": {
+        "tr": ["", "", "", "Hasat", "Hasat", "Hasat", "", "", "", "", "", ""],
+        "en": ["", "", "", "Harvest", "Harvest", "Harvest", "", "", "", "", "", ""]
+      }
+    },
+    {
+      "icon": "portakal_valencia.png",
+      "name": {
+        "tr": "PORTAKAL (Valencia - Geçci)",
+        "en": "ORANGE (Valencia - Late)"
+      },
+      "schedule": {
+        "tr": ["", "", "", "", "", "", "", "Hasat", "Hasat", "Hasat", "Hasat", ""],
+        "en": ["", "", "", "", "", "", "", "Harvest", "Harvest", "Harvest", "Harvest", ""]
+      }
+    }
+  ]
+}
+

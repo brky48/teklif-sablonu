@@ -50,7 +50,7 @@ class ColumnSelectorWidget(QWidget):
                 cb.setChecked(True)
                 cb.setEnabled(False)
                 cb.setToolTip("Bu sütun zorunludur ve kapatılamaz.")
-            elif col in (ColumnKey.PRODUCT_CODE, ColumnKey.PALLET):
+            elif col in (ColumnKey.PRODUCT_CODE, ColumnKey.PALLET, ColumnKey.TOTAL_AMOUNT):
                 # Varsayılan açık opsiyonel sütunlar
                 cb.setChecked(True)
             else:

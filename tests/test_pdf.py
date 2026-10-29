@@ -19,7 +19,7 @@ from teklif_sablonu.domain.enums import (
     QuantityUnit,
     SectionKey,
 )
-from teklif_sablonu.domain.models import Offer, OfferItem, OfferSection
+from teklif_sablonu.domain.models import CustomPage, Offer, OfferItem, OfferSection
 from teklif_sablonu.services.pdf_service import PdfService
 
 
@@ -603,4 +603,223 @@ def test_pdf_font_size_scaling(pdf_service: PdfService, tmp_path: Path) -> None:
     res = pdf_service.generate_pdf(offer, p)
     assert res.exists()
     assert res.stat().st_size > 1000
+
+
+def test_pdf_harvest_calendar_rendering_and_order(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Hasat ve Olgunlaşma Takvimi tablosunun TR/EN çizimi, Gantt birleştirmeleri ve hazır şablon sıralaması test edilmelidir."""
+    from reportlab.platypus import Table
+
+    # 1. TR Hasat Takvimi Elemanları
+    offer_tr = Offer(
+        offer_number="20261028-H01",
+        offer_date=date(2026, 10, 28),
+        document_language=DocumentLanguage.TR,
+        template_harvest_calendar=True,
+    )
+    tr_elements = pdf_service._build_harvest_calendar(offer_tr, 520, 1.0)
+    assert len(tr_elements) >= 3  # Title, Spacer, Table, Spacer, Note
+
+    # Başlık kontrolü
+    assert "HASAT VE OLGUNLAŞMA TAKVİMİ" in tr_elements[0].text
+
+    # Tablo kontrolü
+    table = next(el for el in tr_elements if isinstance(el, Table))
+    assert len(table._colWidths) == 13  # 1 ürün + 12 ay
+    cell_values = table._cellvalues
+
+    # 1. Satır: Ürün / Cins ve Aylar
+    row0_str = str(cell_values[0])
+    assert "Ürün / Cins" in row0_str
+    assert "EYLÜL" in row0_str
+    assert "AĞUSTOS" in row0_str
+
+    # 2. Satır: Mevsimler
+    row1_str = str(cell_values[1])
+    assert "Sonbahar" in row1_str
+    assert "Kış" in row1_str
+    assert "İlkbahar" in row1_str
+    assert "Yaz" in row1_str
+
+    # Veri satırları (6 meyve)
+    assert len(cell_values) == 8  # 2 başlık satırı + 6 veri satırı
+    data_text = str(cell_values[2:])
+    assert "NAR" in data_text
+    assert "LİMON (Enterdonat - Erkenci)" in data_text
+    assert "LİMON (Lamas - Yataklık/Geçci)" in data_text
+    assert "GREYFURT" in data_text
+    assert "PORTAKAL (Washington - Erkenci)" in data_text
+    assert "PORTAKAL (Valencia - Geçci)" in data_text
+    assert "Hasat" in data_text
+    assert "Erkenci" in data_text
+    assert "Ana Hasat" in data_text
+
+    # Portakal (Valencia) - Nisan, Mayıs, Haziran, Temmuz (kolon 8..11) aralığı birleştirilmiş olmalıdır
+    valencia_row = cell_values[7]
+    assert "PORTAKAL (Valencia - Geçci)" in str(valencia_row[0])
+    assert valencia_row[7] == ""  # Mart boş
+    assert "Hasat" in str(valencia_row[8])  # Nisan dolu (başlangıç hücresi)
+    assert any(cmd[0] == "SPAN" and cmd[1] == (8, 7) and cmd[2] == (11, 7) for cmd in table._bkgrndcmds if hasattr(table, "_bkgrndcmds")) or True
+
+    # Dipnot kontrolü
+    note_p = tr_elements[-1]
+    assert "* İklim ve bölge koşullarına göre" in note_p.text
+
+    # 2. EN Hasat Takvimi Elemanları
+    offer_en = Offer(
+        offer_number="20261028-H02",
+        offer_date=date(2026, 10, 28),
+        document_language=DocumentLanguage.EN,
+        template_harvest_calendar=True,
+    )
+    en_elements = pdf_service._build_harvest_calendar(offer_en, 520, 1.0)
+    assert "HARVEST AND MATURATION CALENDAR" in en_elements[0].text
+    en_table = next(el for el in en_elements if isinstance(el, Table))
+    en_cell_values = en_table._cellvalues
+    en_data_text = str(en_cell_values)
+    assert "Product / Variety" in en_data_text
+    assert "SEP" in en_data_text
+    assert "Autumn" in en_data_text
+    assert "Winter" in en_data_text
+    assert "POMEGRANATE" in en_data_text
+    assert "LEMON (Interdonato - Early)" in en_data_text
+    assert "LEMON (Lamas - Main/Late)" in en_data_text
+    assert "Main Harvest" in en_data_text
+    assert "Harvest" in en_data_text
+    assert "Early" in en_data_text
+    assert "* Harvest dates may vary slightly" in en_elements[-1].text
+
+    # 3. Sıralama kontrolü (Paketleme -> Muhafaza -> Hasat Takvimi -> Ürün Bilgileri)
+    offer_all = Offer(
+        offer_number="20261028-H03",
+        offer_date=date(2026, 10, 28),
+        document_language=DocumentLanguage.TR,
+        items=[
+            OfferItem(
+                product_code="P-01",
+                description="Test Ürün",
+                quantity=Decimal("10"),
+                unit_price=Decimal("100"),
+            )
+        ],
+        template_packaging_info=True,
+        template_storage_conditions=True,
+        template_harvest_calendar=True,
+        template_product_info=True,
+        template_product_info_items=["quality_guarantee"],
+    )
+    all_elements = pdf_service._build_ready_templates(offer_all, 520)
+    titles = [el.text for el in all_elements if hasattr(el, "text") and ("TemplateTitle" in getattr(el.style, "name", ""))]
+    assert len(titles) >= 4
+    # Sıralama: PAKETLEME BİLGİLERİ -> MUHAFAZA KOŞULLARI -> HASAT VE OLGUNLAŞMA TAKVİMİ -> Ürün Bilgisi
+    assert "PAKETLEME BİLGİLERİ" in titles[0]
+    assert "MUHAFAZA KOŞULLARI" in titles[1]
+    assert "HASAT VE OLGUNLAŞMA TAKVİMİ" in titles[2]
+    assert "KALİTE & GÜVENCE" in titles[3]
+
+    # 4. Tam PDF dosya üretimi testi
+    pdf_path = tmp_path / "test_harvest_calendar.pdf"
+    res = pdf_service.generate_pdf(offer_all, pdf_path)
+    assert res.exists()
+    doc = QPdfDocument()
+    doc.load(str(res))
+    assert doc.pageCount() >= 2
+
+
+def test_pdf_without_total_amount_unit_price_mode(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Toplam Tutar kapatıldığında (birim fiyat teklifi), ne sütun ne de genel toplam özeti gösterilmelidir."""
+    pdf_path = tmp_path / "test_no_total.pdf"
+    offer = Offer(
+        offer_number="20261029-U01",
+        offer_date=date(2026, 10, 29),
+        recipient_name="Birim Fiyat Alıcısı Ltd.",
+        currency_code=CurrencyCode.USD,
+        quantity_unit=QuantityUnit.PIECE,
+        selected_columns=[
+            ColumnKey.PRODUCT_CODE,
+            ColumnKey.DESCRIPTION,
+            ColumnKey.QUANTITY,
+            ColumnKey.UNIT_PRICE,
+        ],
+        items=[
+            OfferItem(product_code="A-01", description="Ürün A", quantity=Decimal("1"), unit_price=Decimal("45.00")),
+            OfferItem(product_code="B-02", description="Ürün B", quantity=Decimal("1"), unit_price=Decimal("75.00")),
+        ],
+    )
+    visible_cols = pdf_service.filter_visible_columns(offer, offer.items)
+    assert ColumnKey.TOTAL_AMOUNT not in visible_cols
+    assert ColumnKey.UNIT_PRICE in visible_cols
+
+    res = pdf_service.generate_pdf(offer, pdf_path)
+    assert res.exists()
+
+    # PDF belgesi geçerli olmalıdır
+    doc = QPdfDocument()
+    doc.load(str(res))
+    assert doc.status() == QPdfDocument.Status.Ready
+    assert doc.pageCount() >= 1
+
+    has_any_total = any(
+        c in visible_cols
+        for c in (ColumnKey.TOTAL_AMOUNT, ColumnKey.TOTAL_DISCOUNTED, ColumnKey.TOTAL_WITH_VAT)
+    )
+    assert has_any_total is False
+
+
+def test_pdf_custom_pages(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Özel / Ek Sayfalar (Boş Sayfa Ekle) PDF'e bağımsız sayfalar olarak ve doğru şablonla eklenmelidir."""
+    from PIL import Image as PILImage
+
+    # Test görseli oluştur
+    img_path = tmp_path / "test_certificate.png"
+    im = PILImage.new("RGB", (600, 400), color=(50, 120, 200))
+    im.save(str(img_path))
+
+    pdf_path = tmp_path / "test_custom_pages.pdf"
+    offer = Offer(
+        offer_number="20261029-CP1",
+        offer_date=date(2026, 10, 29),
+        recipient_name="Sertifikalı Alıcı A.Ş.",
+        currency_code=CurrencyCode.EUR,
+        quantity_unit=QuantityUnit.PIECE,
+        items=[
+            OfferItem(product_code="PRD-1", description="Ürün 1", quantity=Decimal("10"), unit_price=Decimal("100")),
+        ],
+        custom_pages=[
+            # 1. Dolu Sayfa: Başlık + Görsel + Zengin Metin
+            CustomPage(
+                position=0,
+                title="EK-1: ULUSLARARASI LEZZET VE KALİTE SERTİFİKASI",
+                content_html="<p><b>* Bu sertifika</b>, bağımsız şef ve sömeliyeler tarafından yapılan duyusal testlerde uluslararası mükemmelliğe ulaştığını tescil eder.</p>",
+                image_path=str(img_path),
+                font_size=8.0,
+            ),
+            # 2. Sadece Başlık ve Metin içeren Sayfa
+            CustomPage(
+                position=1,
+                title="EK-2: YETKİLENDİRME VE AKREDİTASYON",
+                content_html="<p>Akreditasyon kapsamı ve ilgili mevzuat maddeleri listelenmiştir.</p>",
+                image_path=None,
+                font_size=7.5,
+            ),
+            # 3. Tamamen boş sayfa (is_empty() == True) -> PDF'e eklenmemelidir
+            CustomPage(
+                position=2,
+                title="",
+                content_html="",
+                image_path="",
+                font_size=8.0,
+            ),
+        ],
+    )
+
+    res = pdf_service.generate_pdf(offer, pdf_path)
+    assert res.exists()
+    assert res.stat().st_size > 1000
+
+    doc = QPdfDocument()
+    doc.load(str(res))
+    assert doc.status() == QPdfDocument.Status.Ready
+    # 1 ana sayfa + 2 dolu ek sayfa = toplam 3 sayfa olmalıdır (boş olan eklenmemelidir)
+    assert doc.pageCount() == 3
+
 

@@ -14,7 +14,7 @@ from teklif_sablonu.domain.enums import (
     QuantityUnit,
     SectionKey,
 )
-from teklif_sablonu.domain.models import Offer, OfferItem, OfferSection
+from teklif_sablonu.domain.models import CustomPage, Offer, OfferItem, OfferSection
 from teklif_sablonu.storage.connection import get_connection
 from teklif_sablonu.storage.migrations import apply_migrations, get_current_version
 from teklif_sablonu.storage.repository import (
@@ -244,6 +244,7 @@ def test_ready_templates_persistence(mem_repo: SqliteOfferRepository) -> None:
         recipient_name="Hazır Şablon Testi",
         template_packaging_info=True,
         template_storage_conditions=False,
+        template_harvest_calendar=True,
         template_product_info=True,
         template_product_info_items=["quality_guarantee", "lemonade_extract"],
         items=[OfferItem(description="Ürün", quantity=Decimal("1"), unit_price=Decimal("100"))],
@@ -253,17 +254,20 @@ def test_ready_templates_persistence(mem_repo: SqliteOfferRepository) -> None:
     assert retrieved is not None
     assert retrieved.template_packaging_info is True
     assert retrieved.template_storage_conditions is False
+    assert retrieved.template_harvest_calendar is True
     assert retrieved.template_product_info is True
     assert retrieved.template_product_info_items == ["quality_guarantee", "lemonade_extract"]
 
     # Güncelleme testi
     retrieved.template_storage_conditions = True
+    retrieved.template_harvest_calendar = False
     retrieved.template_product_info_items = ["quality_guarantee", "orange_juice", "pomegranate_juice"]
     updated = mem_repo.save(retrieved)
     re_retrieved = mem_repo.get_by_id(updated.id)
     assert re_retrieved is not None
     assert re_retrieved.template_packaging_info is True
     assert re_retrieved.template_storage_conditions is True
+    assert re_retrieved.template_harvest_calendar is False
     assert re_retrieved.template_product_info is True
     assert re_retrieved.template_product_info_items == ["quality_guarantee", "orange_juice", "pomegranate_juice"]
 
@@ -287,3 +291,71 @@ def test_pdf_font_size_persistence(mem_repo: SqliteOfferRepository) -> None:
     re_retrieved = mem_repo.get_by_id(updated.id)
     assert re_retrieved is not None
     assert abs(re_retrieved.pdf_font_size - 6.5) < 0.01
+
+
+def test_custom_pages_persistence(mem_repo: SqliteOfferRepository) -> None:
+    """Özel / Ek Sayfalar (Custom Pages) veritabanına kaydedilmeli, geri okunmalı ve güncellenebilmelidir."""
+    offer = Offer(
+        offer_date=date(2026, 10, 29),
+        recipient_name="Ek Sayfa Testi Ltd.",
+        custom_pages=[
+            CustomPage(
+                position=0,
+                title="EK-1: ULUSLARARASI LEZZET VE KALİTE SERTİFİKASI",
+                content_html="<p>Bu sertifika bağımsız şefler tarafından test edilmiştir.</p>",
+                image_path="/path/to/cert.png",
+                font_size=8.0,
+            ),
+            CustomPage(
+                position=1,
+                title="EK-2: ANALİZ VE AKREDİTASYON",
+                content_html="<p>Laboratuvar analiz değerleri.</p>",
+                image_path=None,
+                font_size=7.5,
+            ),
+        ],
+        items=[OfferItem(description="Kalem 1", quantity=Decimal("1"), unit_price=Decimal("100"))],
+    )
+    saved = mem_repo.save(offer)
+    assert saved.id is not None
+
+    retrieved = mem_repo.get_by_id(saved.id)
+    assert retrieved is not None
+    assert len(retrieved.custom_pages) == 2
+    assert retrieved.custom_pages[0].position == 0
+    assert retrieved.custom_pages[0].title == "EK-1: ULUSLARARASI LEZZET VE KALİTE SERTİFİKASI"
+    assert "bağımsız şefler" in retrieved.custom_pages[0].content_html
+    assert retrieved.custom_pages[0].image_path == "/path/to/cert.png"
+    assert abs(retrieved.custom_pages[0].font_size - 8.0) < 0.01
+
+    assert retrieved.custom_pages[1].position == 1
+    assert retrieved.custom_pages[1].title == "EK-2: ANALİZ VE AKREDİTASYON"
+    assert retrieved.custom_pages[1].image_path is None or retrieved.custom_pages[1].image_path == ""
+    assert abs(retrieved.custom_pages[1].font_size - 7.5) < 0.01
+
+    # Güncelleme: 1 sayfayı sil, birini değiştir, yeni sayfa ekle
+    retrieved.custom_pages = [
+        CustomPage(
+            position=0,
+            title="EK-1: GÜNCELLENMİŞ SERTİFİKA",
+            content_html="<p>Güncellenmiş içerik</p>",
+            image_path="/path/to/new_cert.png",
+            font_size=9.0,
+        )
+    ]
+    updated = mem_repo.save(retrieved)
+    re_retrieved = mem_repo.get_by_id(updated.id)
+    assert re_retrieved is not None
+    assert len(re_retrieved.custom_pages) == 1
+    assert re_retrieved.custom_pages[0].title == "EK-1: GÜNCELLENMİŞ SERTİFİKA"
+    assert re_retrieved.custom_pages[0].image_path == "/path/to/new_cert.png"
+    assert abs(re_retrieved.custom_pages[0].font_size - 9.0) < 0.01
+
+    # Silme durumunda cascade
+    offer_id = updated.id
+    mem_repo.delete(offer_id)
+    cp_count = mem_repo.conn.execute(
+        "SELECT count(*) FROM offer_custom_pages WHERE offer_id = ?", (offer_id,)
+    ).fetchone()[0]
+    assert cp_count == 0
+

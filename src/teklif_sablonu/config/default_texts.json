@@ -1,5 +1,11 @@
 {
   "sections": {
+    "contact_info": {
+      "label": "Teklif İletişim Bilgileri",
+      "default_text": "",
+      "max_chars": 5000,
+      "rich_text": true
+    },
     "delivery_address": {
       "label": "Teslimat Adresi",
       "default_text": "",

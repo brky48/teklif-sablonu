@@ -9,6 +9,7 @@ from teklif_sablonu.config import (
     BRANDS_DIR,
     COMPANIES_DIR,
     FONTS_DIR,
+    HARVEST_DIR,
     AppConfig,
     CompanyInfo,
     SectionDefault,
@@ -16,6 +17,7 @@ from teklif_sablonu.config import (
     get_user_data_dir,
     load_app_config,
     load_companies,
+    load_harvest_calendar,
     load_section_defaults,
 )
 
@@ -62,6 +64,7 @@ def test_load_section_defaults() -> None:
     """Bölüm 7.6'daki varsayılan koşul metinleri eksiksiz yüklenmelidir."""
     sections = load_section_defaults()
     expected_keys = [
+        "contact_info",
         "delivery_address",
         "order_notification",
         "delivery_method",
@@ -75,11 +78,14 @@ def test_load_section_defaults() -> None:
         assert isinstance(sections[key], SectionDefault)
         assert sections[key].max_chars > 0
 
-    # Saklama Koşulları ve Ek Alan varsayılan olarak boş başlamalıdır
+    # Saklama Koşulları, Ek Alan ve İletişim Bilgileri varsayılan olarak boş başlamalıdır
     assert sections["storage_conditions"].default_text == ""
     assert sections["additional_notes"].default_text == ""
-    # Ek Alan rich_text desteklemelidir
+    assert sections["contact_info"].default_text == ""
+    # Ek Alan ve İletişim Bilgileri rich_text desteklemelidir
     assert sections["additional_notes"].rich_text is True
+    assert sections["contact_info"].rich_text is True
+    assert sections["contact_info"].max_chars == 5000
 
 
 def test_load_app_config() -> None:
@@ -87,7 +93,7 @@ def test_load_app_config() -> None:
     config = load_app_config()
     assert isinstance(config, AppConfig)
     assert len(config.companies) == 2
-    assert len(config.section_defaults) == 6
+    assert len(config.section_defaults) == 7
 
 
 def test_assets_directories_exist() -> None:
@@ -96,3 +102,17 @@ def test_assets_directories_exist() -> None:
     assert COMPANIES_DIR.exists()
     assert BRANDS_DIR.exists()
     assert FONTS_DIR.exists()
+    assert HARVEST_DIR.exists()
+
+
+def test_load_harvest_calendar() -> None:
+    """harvest_calendar.json verisi TR ve EN için eksiksiz yüklenmelidir."""
+    cal = load_harvest_calendar()
+    assert "title" in cal
+    assert cal["title"]["tr"] == "HASAT VE OLGUNLAŞMA TAKVİMİ"
+    assert cal["title"]["en"] == "HARVEST AND MATURATION CALENDAR"
+    assert len(cal["months"]["tr"]) == 12
+    assert len(cal["months"]["en"]) == 12
+    assert len(cal["seasons"]["tr"]) == 4
+    assert len(cal["seasons"]["en"]) == 4
+    assert len(cal["items"]) == 6

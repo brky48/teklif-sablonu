@@ -155,7 +155,6 @@ class ColumnKey(str, Enum):
             ColumnKey.DESCRIPTION,
             ColumnKey.QUANTITY,
             ColumnKey.UNIT_PRICE,
-            ColumnKey.TOTAL_AMOUNT,
         )
 
 
@@ -184,6 +183,7 @@ class SectionKey(str, Enum):
     PAYMENT_TERMS = "payment_terms"
     STORAGE_CONDITIONS = "storage_conditions"
     ADDITIONAL_NOTES = "additional_notes"
+    CONTACT_INFO = "contact_info"
 
     @property
     def label_tr(self) -> str:
@@ -199,6 +199,7 @@ class SectionKey(str, Enum):
                 SectionKey.PAYMENT_TERMS: "Ödeme Şartları",
                 SectionKey.STORAGE_CONDITIONS: "Depolama Şartları",
                 SectionKey.ADDITIONAL_NOTES: "Ek Alan",
+                SectionKey.CONTACT_INFO: "Teklif İletişim Bilgileri",
             }
             return labels_tr.get(self, self.value)
 
@@ -209,6 +210,7 @@ class SectionKey(str, Enum):
             SectionKey.PAYMENT_TERMS: "Payment Terms",
             SectionKey.STORAGE_CONDITIONS: "Storage Conditions",
             SectionKey.ADDITIONAL_NOTES: "Additional Notes",
+            SectionKey.CONTACT_INFO: "Quotation Contact Information",
         }
         return labels_en.get(self, self.value)
 
@@ -217,8 +219,10 @@ class SectionKey(str, Enum):
         """Karakter sınırı (Bölüm 7.6)."""
         if self == SectionKey.ADDITIONAL_NOTES:
             return 10000
+        elif self == SectionKey.CONTACT_INFO:
+            return 5000
         return 3000
 
     @property
     def is_rich_text(self) -> bool:
-        return self == SectionKey.ADDITIONAL_NOTES
+        return self in (SectionKey.ADDITIONAL_NOTES, SectionKey.CONTACT_INFO)

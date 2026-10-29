@@ -214,6 +214,24 @@ def test_section_character_limits() -> None:
     assert len(validate_section(sec_rich_over)) == 1
     assert "en fazla 10000 karakter" in validate_section(sec_rich_over)[0].message
 
+    # Teklif İletişim Bilgileri (5000 karakter sınırı)
+    contact_ok = OfferSection(
+        section_key=SectionKey.CONTACT_INFO,
+        enabled=True,
+        text="<b>" + ("D" * 5000) + "</b>",
+        rich_text=True,
+    )
+    assert len(validate_section(contact_ok)) == 0
+
+    contact_over = OfferSection(
+        section_key=SectionKey.CONTACT_INFO,
+        enabled=True,
+        text="<b>" + ("D" * 5001) + "</b>",
+        rich_text=True,
+    )
+    assert len(validate_section(contact_over)) == 1
+    assert "en fazla 5000 karakter" in validate_section(contact_over)[0].message
+
 
 def test_enums_and_models_helpers() -> None:
     """Enum yardımcı özellikleri ve model metodları doğru çalışmalıdır."""
@@ -237,6 +255,9 @@ def test_enums_and_models_helpers() -> None:
     assert SectionKey.DELIVERY_ADDRESS.label_tr == "Teslimat Adresi"
     assert SectionKey.DELIVERY_ADDRESS.max_chars == 3000
     assert SectionKey.ADDITIONAL_NOTES.is_rich_text is True
+    assert SectionKey.CONTACT_INFO.label_tr == "Teklif İletişim Bilgileri"
+    assert SectionKey.CONTACT_INFO.max_chars == 5000
+    assert SectionKey.CONTACT_INFO.is_rich_text is True
 
     offer = _make_valid_offer()
     assert offer.is_column_selected(ColumnKey.DESCRIPTION) is True

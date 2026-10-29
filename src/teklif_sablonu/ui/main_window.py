@@ -38,6 +38,7 @@ from teklif_sablonu.services.offer_service import OfferService
 from teklif_sablonu.services.pdf_service import PdfService
 from teklif_sablonu.ui.archive_widget import ArchiveWidget
 from teklif_sablonu.ui.column_selector_widget import ColumnSelectorWidget
+from teklif_sablonu.ui.custom_pages_widget import CustomPagesWidget
 from teklif_sablonu.ui.header_widget import HeaderWidget
 from teklif_sablonu.ui.items_table_widget import ItemsTableWidget
 from teklif_sablonu.ui.ready_templates_widget import ReadyTemplatesWidget
@@ -120,7 +121,11 @@ class MainWindow(QMainWindow):
         self.ready_templates_widget = ReadyTemplatesWidget()
         scroll_layout.addWidget(self.ready_templates_widget)
 
-        # 7. Alt aksiyon butonları
+        # 7. Özel / Ek Sayfalar (Boş Sayfa Ekle - Appendix)
+        self.custom_pages_widget = CustomPagesWidget()
+        scroll_layout.addWidget(self.custom_pages_widget)
+
+        # 8. Alt aksiyon butonları
         action_bar = QHBoxLayout()
         self.btn_new = QPushButton("📄 Yeni Teklif")
         self.btn_new.setProperty("class", "secondary")
@@ -183,10 +188,13 @@ class MainWindow(QMainWindow):
         self.header_widget.values_changed.connect(self._recalculate_all)
 
         # Sütun seçici değişiklikleri
-        self.column_selector.columns_changed.connect(self.items_table.set_selected_columns)
+        self.column_selector.columns_changed.connect(self._on_columns_changed)
 
         # Tablo satır değişiklikleri
         self.items_table.items_changed.connect(self._recalculate_all)
+
+        # Özel / Ek sayfa değişiklikleri
+        self.custom_pages_widget.pages_changed.connect(self._recalculate_all)
 
         # Arşiv sinyalleri
         self.archive_widget.open_offer_requested.connect(self._on_open_offer_from_archive)
@@ -219,6 +227,10 @@ class MainWindow(QMainWindow):
         self.items_table.set_discount(enabled)
         self._recalculate_all()
 
+    def _on_columns_changed(self, columns: list[ColumnKey]) -> None:
+        self.items_table.set_selected_columns(columns)
+        self._recalculate_all()
+
     def _recalculate_all(self) -> None:
         """Domain calculator modülünü kullanarak genel toplamları anlık hesaplar."""
         items = self.items_table.get_items()
@@ -226,6 +238,13 @@ class MainWindow(QMainWindow):
         vat_enabled = self.header_widget.is_vat_enabled()
         vat_rate = self.header_widget.get_vat_rate()
         discount_enabled = self.header_widget.is_discount_enabled()
+
+        selected_cols = self.column_selector.get_selected_columns()
+        has_any_total = any(
+            c in selected_cols
+            for c in (ColumnKey.TOTAL_AMOUNT, ColumnKey.TOTAL_DISCOUNTED, ColumnKey.TOTAL_WITH_VAT)
+        )
+        self.totals_widget.setVisible(has_any_total)
 
         self.totals_widget.update_features(
             currency=curr,
@@ -243,9 +262,14 @@ class MainWindow(QMainWindow):
         self.totals_widget.update_totals(totals)
 
         valid_count = len([i for i in items if not i.is_empty()])
-        self.status_bar.showMessage(
-            f"Geçerli Ürün Sayısı: {valid_count} | Para Birimi: {curr.value} | Ara Toplam: {totals.subtotal} {curr.symbol}"
-        )
+        if has_any_total:
+            self.status_bar.showMessage(
+                f"Geçerli Ürün Sayısı: {valid_count} | Para Birimi: {curr.value} | Ara Toplam: {totals.subtotal} {curr.symbol}"
+            )
+        else:
+            self.status_bar.showMessage(
+                f"Geçerli Ürün Sayısı: {valid_count} | Para Birimi: {curr.value} | Toplam Tutar: Gizli"
+            )
 
     # ── Model Dönüşüm ve Veri Metotları ──
 
@@ -268,11 +292,13 @@ class MainWindow(QMainWindow):
             pdf_font_size=self.header_widget.get_pdf_font_size(),
             template_packaging_info=self.ready_templates_widget.is_packaging_enabled(),
             template_storage_conditions=self.ready_templates_widget.is_storage_enabled(),
+            template_harvest_calendar=self.ready_templates_widget.is_harvest_enabled(),
             template_product_info=self.ready_templates_widget.is_product_info_enabled(),
             template_product_info_items=self.ready_templates_widget.get_selected_product_info_items(),
             selected_columns=self.column_selector.get_selected_columns(),
             items=self.items_table.get_items(),
             sections=self.sections_widget.get_sections(),
+            custom_pages=self.custom_pages_widget.get_pages(),
             source_offer_id=self._source_offer_id,
         )
 
@@ -312,8 +338,10 @@ class MainWindow(QMainWindow):
         self.sections_widget.set_sections(offer.sections)
         self.ready_templates_widget.set_packaging_enabled(offer.template_packaging_info)
         self.ready_templates_widget.set_storage_enabled(offer.template_storage_conditions)
+        self.ready_templates_widget.set_harvest_enabled(getattr(offer, "template_harvest_calendar", False))
         self.ready_templates_widget.set_product_info_enabled(offer.template_product_info)
         self.ready_templates_widget.set_selected_product_info_items(offer.template_product_info_items)
+        self.custom_pages_widget.set_pages(getattr(offer, "custom_pages", []))
         self._recalculate_all()
 
     def clear_offer(self) -> None:
@@ -347,6 +375,7 @@ class MainWindow(QMainWindow):
 
         self.sections_widget.set_sections([])
         self.ready_templates_widget.clear()
+        self.custom_pages_widget.clear()
         self._recalculate_all()
         self.status_bar.showMessage("Yeni teklif oluşturuldu.")
 

@@ -286,3 +286,32 @@ def test_strip_html_tags_utility() -> None:
     assert strip_html_tags("<p>Paragraf 1</p><p>Paragraf 2</p>") == "Paragraf 1\nParagraf 2"
     assert strip_html_tags("Satır 1<br/>Satır 2") == "Satır 1\nSatır 2"
     assert strip_html_tags("<b>Kalın</b> ve <i>İtalik</i>") == "Kalın ve İtalik"
+
+
+def test_excel_without_total_amount_unit_price_mode(excel_service: ExcelService, tmp_path: Path) -> None:
+    """Toplam Tutar kapatıldığında Excel çıktısında ne Toplam Tutar sütunu ne de özet kartı olmalıdır."""
+    out_xlsx = tmp_path / "test_no_total.xlsx"
+    offer = Offer(
+        offer_number="20261029-E01",
+        offer_date=date(2026, 10, 29),
+        recipient_name="Birim Fiyat Firması",
+        currency_code=CurrencyCode.TRY,
+        selected_columns=[
+            ColumnKey.DESCRIPTION,
+            ColumnKey.QUANTITY,
+            ColumnKey.UNIT_PRICE,
+        ],
+        items=[
+            OfferItem(description="Kalem 1", quantity=Decimal("1"), unit_price=Decimal("10.00")),
+            OfferItem(description="Kalem 2", quantity=Decimal("1"), unit_price=Decimal("20.00")),
+        ],
+    )
+    res = excel_service.generate_excel(offer, out_xlsx)
+    assert res.exists()
+
+    wb = openpyxl.load_workbook(res)
+    ws = wb.active
+    all_values = [cell.value for row in ws.iter_rows() for cell in row if cell.value is not None]
+    assert "Ara Toplam:" not in all_values
+    assert "Genel Toplam:" not in all_values
+    assert "Toplam Tutar" not in [str(v) for v in all_values]

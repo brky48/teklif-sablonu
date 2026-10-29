@@ -82,6 +82,26 @@ class OfferSection:
     position: int = 0
 
 
+@dataclass
+class CustomPage:
+    """Kullanıcı tarafından eklenen özel/ek sayfa (Sertifika, Ek Belge vb.)."""
+
+    id: int | None = None
+    offer_id: int | None = None
+    position: int = 0
+    title: str = ""
+    content_html: str = ""
+    image_path: str = ""
+    font_size: float = 8.0
+
+    def is_empty(self) -> bool:
+        """Sayfa tamamen boş mu?"""
+        has_title = bool(self.title and self.title.strip())
+        has_content = bool(self.content_html and self.content_html.strip())
+        has_image = bool(self.image_path and self.image_path.strip())
+        return not (has_title or has_content or has_image)
+
+
 @dataclass(frozen=True)
 class OfferItemCalculation:
     """Bir ürün satırının hesaplanmış tutarları (tümü 2 basamağa yuvarlanmış)."""
@@ -144,11 +164,13 @@ class Offer:
     pdf_font_size: float = 8.0
     template_packaging_info: bool = False
     template_storage_conditions: bool = False
+    template_harvest_calendar: bool = False
     template_product_info: bool = False
     template_product_info_items: list[str] = field(default_factory=list)
     selected_columns: list[ColumnKey] = field(default_factory=default_selected_columns)
     items: list[OfferItem] = field(default_factory=list)
     sections: list[OfferSection] = field(default_factory=list)
+    custom_pages: list[CustomPage] = field(default_factory=list)
     source_offer_id: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

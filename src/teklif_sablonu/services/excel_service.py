@@ -105,6 +105,9 @@ class ExcelService:
                 elif col == ColumnKey.VAT and offer.vat_enabled and offer.vat_rate > 0:
                     has_value = True
                     break
+                elif col == ColumnKey.TOTAL_AMOUNT:
+                    has_value = True
+                    break
                 elif col == ColumnKey.TOTAL_DISCOUNTED and offer.discount_enabled:
                     has_value = True
                     break
@@ -346,138 +349,156 @@ class ExcelService:
         end_data_row = start_data_row + len(valid_items) - 1
 
         # 7. Genel Toplam Özeti (Totals Summary Card)
-        summary_start_row = end_data_row + 2
         last_col_idx = len(visible_cols) + 1
-        summary_lbl_idx = max(last_col_idx - 1, 2)
-        summary_val_idx = last_col_idx
+        has_any_total_col = any(
+            c in visible_cols
+            for c in (ColumnKey.TOTAL_AMOUNT, ColumnKey.TOTAL_DISCOUNTED, ColumnKey.TOTAL_WITH_VAT)
+        )
 
-        totals_fill = PatternFill(start_color=self.ACCENT_BG, end_color=self.ACCENT_BG, fill_type="solid")
+        if has_any_total_col:
+            summary_start_row = end_data_row + 2
+            summary_lbl_idx = max(last_col_idx - 1, 2)
+            summary_val_idx = last_col_idx
 
-        # 7.1 Ara Toplam
-        subtotal_lbl = "Subtotal:" if is_en else "Ara Toplam:"
-        ws.cell(row=summary_start_row, column=summary_lbl_idx, value=subtotal_lbl).font = bold_font
-        ws.cell(row=summary_start_row, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
-        ws.cell(row=summary_start_row, column=summary_lbl_idx).border = cell_border
-        ws.cell(row=summary_start_row, column=summary_lbl_idx).fill = totals_fill
+            totals_fill = PatternFill(start_color=self.ACCENT_BG, end_color=self.ACCENT_BG, fill_type="solid")
 
-        subtotal_cell = ws.cell(row=summary_start_row, column=summary_val_idx)
-        if total_letter:
-            subtotal_cell.value = f"=SUM({total_letter}{start_data_row}:{total_letter}{end_data_row})"
-        else:
-            subtotal_cell.value = sum(float(i.total_amount) for i in valid_items)
-        subtotal_cell.font = bold_font
-        subtotal_cell.number_format = num_format_currency
-        subtotal_cell.alignment = Alignment(horizontal="right")
-        subtotal_cell.border = cell_border
-        subtotal_cell.fill = totals_fill
+            # 7.1 Ara Toplam
+            subtotal_lbl = "Subtotal:" if is_en else "Ara Toplam:"
+            ws.cell(row=summary_start_row, column=summary_lbl_idx, value=subtotal_lbl).font = bold_font
+            ws.cell(row=summary_start_row, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
+            ws.cell(row=summary_start_row, column=summary_lbl_idx).border = cell_border
+            ws.cell(row=summary_start_row, column=summary_lbl_idx).fill = totals_fill
 
-        current_summary_r = summary_start_row + 1
-
-        # 7.2 İskonto Satırları (Etkinse)
-        if offer.discount_enabled:
-            # Toplam İskonto
-            disc_lbl = "Total Discount:" if is_en else "Toplam İskonto:"
-            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_lbl).font = regular_font
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
-
-            disc_sum_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
-            if total_letter and disc_total_letter:
-                disc_sum_cell.value = f"=SUM({total_letter}{start_data_row}:{total_letter}{end_data_row})-SUM({disc_total_letter}{start_data_row}:{disc_total_letter}{end_data_row})"
+            subtotal_cell = ws.cell(row=summary_start_row, column=summary_val_idx)
+            if total_letter:
+                subtotal_cell.value = f"=SUM({total_letter}{start_data_row}:{total_letter}{end_data_row})"
             else:
-                disc_sum_cell.value = float(offer_totals.total_discount)
-            disc_sum_cell.font = regular_font
-            disc_sum_cell.number_format = num_format_currency
-            disc_sum_cell.alignment = Alignment(horizontal="right")
-            disc_sum_cell.border = cell_border
-            disc_sum_cell.fill = totals_fill
-            current_summary_r += 1
+                subtotal_cell.value = sum(float(i.total_amount) for i in valid_items)
+            subtotal_cell.font = bold_font
+            subtotal_cell.number_format = num_format_currency
+            subtotal_cell.alignment = Alignment(horizontal="right")
+            subtotal_cell.border = cell_border
+            subtotal_cell.fill = totals_fill
 
-            # İskonto Sonrası Ara Toplam
-            disc_sub_lbl = "Subtotal After Discount:" if is_en else "İskonto Sonrası Ara Toplam:"
-            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_sub_lbl).font = bold_font
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
+            current_summary_r = summary_start_row + 1
 
-            disc_sub_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
-            if disc_total_letter:
-                disc_sub_cell.value = f"=SUM({disc_total_letter}{start_data_row}:{disc_total_letter}{end_data_row})"
-            elif total_letter:
-                sub_r = summary_start_row
-                disc_r = current_summary_r - 1
-                lbl_l = get_column_letter(summary_val_idx)
-                disc_sub_cell.value = f"={lbl_l}{sub_r}-{lbl_l}{disc_r}"
+            # 7.2 İskonto Satırları (Etkinse)
+            if offer.discount_enabled:
+                # Toplam İskonto
+                disc_lbl = "Total Discount:" if is_en else "Toplam İskonto:"
+                ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_lbl).font = regular_font
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
+
+                disc_sum_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
+                if total_letter and disc_total_letter:
+                    disc_sum_cell.value = f"=SUM({total_letter}{start_data_row}:{total_letter}{end_data_row})-SUM({disc_total_letter}{start_data_row}:{disc_total_letter}{end_data_row})"
+                else:
+                    disc_sum_cell.value = float(offer_totals.total_discount)
+                disc_sum_cell.font = regular_font
+                disc_sum_cell.number_format = num_format_currency
+                disc_sum_cell.alignment = Alignment(horizontal="right")
+                disc_sum_cell.border = cell_border
+                disc_sum_cell.fill = totals_fill
+                current_summary_r += 1
+
+                # İskonto Sonrası Ara Toplam
+                disc_sub_lbl = "Subtotal After Discount:" if is_en else "İskonto Sonrası Ara Toplam:"
+                ws.cell(row=current_summary_r, column=summary_lbl_idx, value=disc_sub_lbl).font = bold_font
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
+
+                disc_sub_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
+                if disc_total_letter:
+                    disc_sub_cell.value = f"=SUM({disc_total_letter}{start_data_row}:{disc_total_letter}{end_data_row})"
+                elif total_letter:
+                    sub_r = summary_start_row
+                    disc_r = current_summary_r - 1
+                    lbl_l = get_column_letter(summary_val_idx)
+                    disc_sub_cell.value = f"={lbl_l}{sub_r}-{lbl_l}{disc_r}"
+                else:
+                    disc_sub_cell.value = float(offer_totals.discounted_subtotal)
+                disc_sub_cell.font = bold_font
+                disc_sub_cell.number_format = num_format_currency
+                disc_sub_cell.alignment = Alignment(horizontal="right")
+                disc_sub_cell.border = cell_border
+                disc_sub_cell.fill = totals_fill
+                current_summary_r += 1
+
+            # 7.3 KDV Satırları (Etkinse)
+            if offer.vat_enabled:
+                # Toplam KDV
+                vat_rate_str = f"{int(offer.vat_rate)}" if offer.vat_rate % 1 == 0 else f"{offer.vat_rate:g}"
+                vat_lbl = f"Total VAT (%{vat_rate_str}):" if is_en else f"Toplam KDV (%{vat_rate_str}):"
+                ws.cell(row=current_summary_r, column=summary_lbl_idx, value=vat_lbl).font = regular_font
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
+                ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
+
+                vat_sum_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
+                val_col_l = get_column_letter(summary_val_idx)
+                base_sum_r = current_summary_r - 1 if offer.discount_enabled else summary_start_row
+                vat_sum_cell.value = f"={val_col_l}{base_sum_r}*({float(offer.vat_rate)}/100)"
+                vat_sum_cell.font = regular_font
+                vat_sum_cell.number_format = num_format_currency
+                vat_sum_cell.alignment = Alignment(horizontal="right")
+                vat_sum_cell.border = cell_border
+                vat_sum_cell.fill = totals_fill
+                current_summary_r += 1
+
+            # 7.4 Genel Toplam (Büyük / Vurgulu)
+            if offer.vat_enabled:
+                grand_lbl = "Grand Total (Incl. VAT):" if is_en else "KDV Dâhil Genel Toplam:"
             else:
-                disc_sub_cell.value = float(offer_totals.discounted_subtotal)
-            disc_sub_cell.font = bold_font
-            disc_sub_cell.number_format = num_format_currency
-            disc_sub_cell.alignment = Alignment(horizontal="right")
-            disc_sub_cell.border = cell_border
-            disc_sub_cell.fill = totals_fill
-            current_summary_r += 1
+                grand_lbl = "Grand Total:" if is_en else "Genel Toplam:"
 
-        # 7.3 KDV Satırları (Etkinse)
-        if offer.vat_enabled:
-            # Toplam KDV
-            vat_rate_str = f"{int(offer.vat_rate)}" if offer.vat_rate % 1 == 0 else f"{offer.vat_rate:g}"
-            vat_lbl = f"Total VAT (%{vat_rate_str}):" if is_en else f"Toplam KDV (%{vat_rate_str}):"
-            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=vat_lbl).font = regular_font
+            ws.cell(row=current_summary_r, column=summary_lbl_idx, value=grand_lbl).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
             ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
             ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
-            ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = totals_fill
+            ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
 
-            vat_sum_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
+            grand_val_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
             val_col_l = get_column_letter(summary_val_idx)
-            base_sum_r = current_summary_r - 1 if offer.discount_enabled else summary_start_row
-            vat_sum_cell.value = f"={val_col_l}{base_sum_r}*({float(offer.vat_rate)}/100)"
-            vat_sum_cell.font = regular_font
-            vat_sum_cell.number_format = num_format_currency
-            vat_sum_cell.alignment = Alignment(horizontal="right")
-            vat_sum_cell.border = cell_border
-            vat_sum_cell.fill = totals_fill
-            current_summary_r += 1
+            if offer.vat_enabled:
+                vat_r = current_summary_r - 1
+                base_r = current_summary_r - 2 if offer.discount_enabled else summary_start_row
+                grand_val_cell.value = f"={val_col_l}{base_r}+{val_col_l}{vat_r}"
+            elif offer.discount_enabled:
+                disc_sub_r = current_summary_r - 1
+                grand_val_cell.value = f"={val_col_l}{disc_sub_r}"
+            else:
+                grand_val_cell.value = f"={val_col_l}{summary_start_row}"
 
-        # 7.4 Genel Toplam (Büyük / Vurgulu)
-        if offer.vat_enabled:
-            grand_lbl = "Grand Total (Incl. VAT):" if is_en else "KDV Dâhil Genel Toplam:"
+            grand_val_cell.font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
+            grand_val_cell.number_format = num_format_currency
+            grand_val_cell.alignment = Alignment(horizontal="right")
+            grand_val_cell.border = cell_border
+            grand_val_cell.fill = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
+
+            current_block_r = current_summary_r + 2
         else:
-            grand_lbl = "Grand Total:" if is_en else "Genel Toplam:"
+            current_block_r = end_data_row + 2
 
-        ws.cell(row=current_summary_r, column=summary_lbl_idx, value=grand_lbl).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
-        ws.cell(row=current_summary_r, column=summary_lbl_idx).alignment = Alignment(horizontal="right")
-        ws.cell(row=current_summary_r, column=summary_lbl_idx).border = cell_border
-        ws.cell(row=current_summary_r, column=summary_lbl_idx).fill = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
+        # 8. Teklif İletişim Bilgileri & Ticari Koşullar & Ek Alan
+        contact_sec = next((s for s in offer.sections if s.section_key == SectionKey.CONTACT_INFO and s.enabled and s.text.strip()), None)
+        other_active_sections = [s for s in offer.sections if s.section_key != SectionKey.CONTACT_INFO and s.enabled and s.text.strip()]
 
-        grand_val_cell = ws.cell(row=current_summary_r, column=summary_val_idx)
-        val_col_l = get_column_letter(summary_val_idx)
-        if offer.vat_enabled:
-            vat_r = current_summary_r - 1
-            base_r = current_summary_r - 2 if offer.discount_enabled else summary_start_row
-            grand_val_cell.value = f"={val_col_l}{base_r}+{val_col_l}{vat_r}"
-        elif offer.discount_enabled:
-            disc_sub_r = current_summary_r - 1
-            grand_val_cell.value = f"={val_col_l}{disc_sub_r}"
-        else:
-            grand_val_cell.value = f"={val_col_l}{summary_start_row}"
+        if contact_sec:
+            contact_text = strip_html_tags(contact_sec.text) if contact_sec.rich_text else contact_sec.text.strip()
+            if contact_text:
+                val_cell = ws.cell(row=current_block_r, column=2, value=contact_text)
+                val_cell.font = regular_font
+                val_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                current_block_r += 2
 
-        grand_val_cell.font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
-        grand_val_cell.number_format = num_format_currency
-        grand_val_cell.alignment = Alignment(horizontal="right")
-        grand_val_cell.border = cell_border
-        grand_val_cell.fill = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
-
-        # 8. Ticari Koşullar & Ek Alan
-        section_start_r = current_summary_r + 2
-        active_sections = [s for s in offer.sections if s.enabled and s.text.strip()]
-
-        if active_sections:
+        if other_active_sections:
             terms_title = "OFFER TERMS AND CONDITIONS" if is_en else "TEKLİF KOŞULLARI VE AÇIKLAMALAR"
-            ws.cell(row=section_start_r, column=2, value=terms_title).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
-            current_sec_r = section_start_r + 1
+            ws.cell(row=current_block_r, column=2, value=terms_title).font = Font(name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR)
+            current_sec_r = current_block_r + 1
 
-            for sec in active_sections:
+            for sec in other_active_sections:
                 sec_text = strip_html_tags(sec.text) if sec.rich_text else sec.text.strip()
                 if not sec_text:
                     continue
@@ -497,6 +518,42 @@ class ExcelService:
                     val_cell.font = regular_font
                     val_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
                     current_sec_r += 1
+
+        # 8.1 Özel / Ek Sayfalar (Boş Sayfa Ekle - Appendix)
+        if getattr(offer, "custom_pages", None):
+            custom_pages_to_render = [cp for cp in offer.custom_pages if not cp.is_empty()]
+            if custom_pages_to_render:
+                current_cp_r = current_block_r
+                if other_active_sections:
+                    current_cp_r = current_sec_r + 1
+                for idx, cp in enumerate(custom_pages_to_render, 1):
+                    page_title = cp.title or (f"APPENDIX {idx}" if is_en else f"EK BELGE {idx}")
+                    ws.cell(row=current_cp_r, column=2, value=page_title).font = Font(
+                        name="Calibri", size=11, bold=True, color=self.PRIMARY_COLOR
+                    )
+                    current_cp_r += 1
+                    if cp.image_path and Path(cp.image_path).exists():
+                        try:
+                            from openpyxl.drawing.image import Image as OpenpyxlImage
+
+                            xl_img = OpenpyxlImage(cp.image_path)
+                            orig_w, orig_h = xl_img.width, xl_img.height
+                            if orig_w > 0 and orig_h > 0:
+                                max_w = 480
+                                scale = max_w / float(orig_w) if orig_w > max_w else 1.0
+                                xl_img.width = int(orig_w * scale)
+                                xl_img.height = int(orig_h * scale)
+                                ws.add_image(xl_img, f"B{current_cp_r}")
+                                current_cp_r += max(12, int(xl_img.height / 20))
+                        except Exception:
+                            pass
+                    if cp.content_html:
+                        plain_c = strip_html_tags(cp.content_html)
+                        if plain_c:
+                            val_cell = ws.cell(row=current_cp_r, column=2, value=plain_c)
+                            val_cell.font = regular_font
+                            val_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                            current_cp_r += 2
 
         # 9. Otomatik Sütun Genişliği Hesaplama
         for col_idx in range(2, last_col_idx + 1):

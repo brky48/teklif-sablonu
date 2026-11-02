@@ -989,9 +989,10 @@ class PdfService:
                     add_notes_html = clean_html
             else:
                 label_text = sec.section_key.label(offer.document_language)
+                text_content = qt_html_to_reportlab(sec.text.strip()) if sec.rich_text else sec.text.strip()
                 table_rows.append([
                     Paragraph(f"<b>{label_text}:</b>", self.styles["ConditionLabel"]),
-                    Paragraph(sec.text.strip(), self.styles["ConditionText"]),
+                    Paragraph(text_content, self.styles["ConditionText"]),
                 ])
 
         # 1. Teklif İletişim Bilgileri kutusu (Kendi kutucuğuna sahip tam genişlikte zengin metin kutusu)

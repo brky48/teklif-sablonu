@@ -225,4 +225,5 @@ class SectionKey(str, Enum):
 
     @property
     def is_rich_text(self) -> bool:
-        return self in (SectionKey.ADDITIONAL_NOTES, SectionKey.CONTACT_INFO)
+        """Tüm ticari koşul bölümleri zengin metin (Rich Text) biçimlendirmesini destekler."""
+        return True

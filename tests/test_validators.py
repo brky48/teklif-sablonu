@@ -254,6 +254,11 @@ def test_enums_and_models_helpers() -> None:
 
     assert SectionKey.DELIVERY_ADDRESS.label_tr == "Teslimat Adresi"
     assert SectionKey.DELIVERY_ADDRESS.max_chars == 3000
+    assert SectionKey.DELIVERY_ADDRESS.is_rich_text is True
+    assert SectionKey.ORDER_NOTIFICATION.is_rich_text is True
+    assert SectionKey.DELIVERY_METHOD.is_rich_text is True
+    assert SectionKey.PAYMENT_TERMS.is_rich_text is True
+    assert SectionKey.STORAGE_CONDITIONS.is_rich_text is True
     assert SectionKey.ADDITIONAL_NOTES.is_rich_text is True
     assert SectionKey.CONTACT_INFO.label_tr == "Teklif İletişim Bilgileri"
     assert SectionKey.CONTACT_INFO.max_chars == 5000

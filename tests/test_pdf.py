@@ -823,3 +823,47 @@ def test_pdf_custom_pages(pdf_service: PdfService, tmp_path: Path) -> None:
     assert doc.pageCount() == 3
 
 
+def test_pdf_commercial_conditions_rich_text(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Ticari koşullarda (Teslimat Adresi, Teslim Şekli, Ödeme vb.) girilen zengin metin PDF çıktısında hatasız oluşturulmalıdır."""
+    pdf_path = tmp_path / "test_rich_conditions.pdf"
+    offer = Offer(
+        offer_number="20261102-RC1",
+        offer_date=date(2026, 11, 2),
+        recipient_name="Zengin Metin Alıcısı Ltd.",
+        currency_code=CurrencyCode.TRY,
+        quantity_unit=QuantityUnit.PIECE,
+        items=[
+            OfferItem(product_code="KOD-01", description="Ürün A", quantity=Decimal("5"), unit_price=Decimal("150.00")),
+        ],
+        sections=[
+            OfferSection(
+                section_key=SectionKey.DELIVERY_ADDRESS,
+                enabled=True,
+                text="<p><b>Fabrika Deposu:</b> Organize Sanayi Bölgesi <i>4. Cadde No: 12</i></p>",
+                rich_text=True,
+            ),
+            OfferSection(
+                section_key=SectionKey.PAYMENT_TERMS,
+                enabled=True,
+                text="<p>%50 <u>peşin</u>, %50 teslimatta <b>nakit</b> veya <b>havale</b> ile.</p>",
+                rich_text=True,
+            ),
+            OfferSection(
+                section_key=SectionKey.DELIVERY_METHOD,
+                enabled=True,
+                text="<ul><li>Tek noktaya sevk</li><li>Paletli teslimat</li></ul>",
+                rich_text=True,
+            ),
+        ],
+    )
+    res = pdf_service.generate_pdf(offer, pdf_path)
+    assert res.exists()
+    assert res.stat().st_size > 1000
+
+    doc = QPdfDocument()
+    doc.load(str(res))
+    assert doc.status() == QPdfDocument.Status.Ready
+    assert doc.pageCount() >= 1
+
+
+

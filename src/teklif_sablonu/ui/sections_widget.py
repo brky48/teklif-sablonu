@@ -24,9 +24,9 @@ from teklif_sablonu.domain.validators import get_visible_text_length
 
 
 class RichTextToolBar(QWidget):
-    """Ek Alan için kalın, italik, altı çizili ve liste butonları içeren araç çubuğu."""
+    """Ticari koşullar için kalın, italik, altı çizili ve liste butonları içeren araç çubuğu."""
 
-    def __init__(self, editor: QTextEdit, parent: QWidget | None = None) -> None:
+    def __init__(self, editor: QTextEdit | None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.editor = editor
         self._init_ui()
@@ -38,33 +38,35 @@ class RichTextToolBar(QWidget):
 
         self.btn_bold = QPushButton("B")
         self.btn_bold.setProperty("class", "toolbar")
-        self.btn_bold.setFixedSize(30, 28)
+        self.btn_bold.setFixedSize(28, 26)
         self.btn_bold.setToolTip("Kalın (Ctrl+B)")
-        self.btn_bold.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.btn_bold.setStyleSheet("font-weight: bold; font-size: 13px;")
         self.btn_bold.clicked.connect(self._toggle_bold)
 
         self.btn_italic = QPushButton("I")
         self.btn_italic.setProperty("class", "toolbar")
-        self.btn_italic.setFixedSize(30, 28)
+        self.btn_italic.setFixedSize(28, 26)
         self.btn_italic.setToolTip("İtalik (Ctrl+I)")
-        self.btn_italic.setStyleSheet("font-style: italic; font-size: 14px; font-family: serif;")
+        self.btn_italic.setStyleSheet("font-style: italic; font-size: 13px; font-family: serif;")
         self.btn_italic.clicked.connect(self._toggle_italic)
 
         self.btn_underline = QPushButton("U")
         self.btn_underline.setProperty("class", "toolbar")
-        self.btn_underline.setFixedSize(30, 28)
+        self.btn_underline.setFixedSize(28, 26)
         self.btn_underline.setToolTip("Altı Çizili (Ctrl+U)")
-        self.btn_underline.setStyleSheet("text-decoration: underline; font-size: 14px;")
+        self.btn_underline.setStyleSheet("text-decoration: underline; font-size: 13px;")
         self.btn_underline.clicked.connect(self._toggle_underline)
 
-        self.btn_bullet_list = QPushButton("• Madde İmleri")
+        self.btn_bullet_list = QPushButton("• Madde")
         self.btn_bullet_list.setProperty("class", "toolbar")
-        self.btn_bullet_list.setFixedHeight(28)
+        self.btn_bullet_list.setFixedHeight(26)
+        self.btn_bullet_list.setToolTip("Madde İmleri Listesi")
         self.btn_bullet_list.clicked.connect(self._insert_bullet_list)
 
-        self.btn_num_list = QPushButton("1. Numaralı Liste")
+        self.btn_num_list = QPushButton("1. Liste")
         self.btn_num_list.setProperty("class", "toolbar")
-        self.btn_num_list.setFixedHeight(28)
+        self.btn_num_list.setFixedHeight(26)
+        self.btn_num_list.setToolTip("Numaralı Liste")
         self.btn_num_list.clicked.connect(self._insert_numbered_list)
 
         layout.addWidget(self.btn_bold)
@@ -75,24 +77,34 @@ class RichTextToolBar(QWidget):
         layout.addStretch()
 
     def _toggle_bold(self) -> None:
+        if not self.editor:
+            return
         weight = QFont.Weight.Bold if self.editor.fontWeight() != QFont.Weight.Bold else QFont.Weight.Normal
         self.editor.setFontWeight(weight)
         self.editor.setFocus()
 
     def _toggle_italic(self) -> None:
+        if not self.editor:
+            return
         self.editor.setFontItalic(not self.editor.fontItalic())
         self.editor.setFocus()
 
     def _toggle_underline(self) -> None:
+        if not self.editor:
+            return
         self.editor.setFontUnderline(not self.editor.fontUnderline())
         self.editor.setFocus()
 
     def _insert_bullet_list(self) -> None:
+        if not self.editor:
+            return
         cursor = self.editor.textCursor()
         cursor.createList(QTextListFormat.Style.ListDisc)
         self.editor.setFocus()
 
     def _insert_numbered_list(self) -> None:
+        if not self.editor:
+            return
         cursor = self.editor.textCursor()
         cursor.createList(QTextListFormat.Style.ListDecimal)
         self.editor.setFocus()
@@ -146,13 +158,19 @@ class SingleSectionCard(QWidget):
 
             self.rich_editor = QTextEdit()
             self.rich_editor.setEnabled(False)
-            self.rich_editor.setMaximumHeight(140)
-            placeholder = (
-                "İsteğe bağlı teklif iletişim bilgileri..."
-                if self.section_key == SectionKey.CONTACT_INFO
-                else "İsteğe bağlı zengin metin notları..."
-            )
-            self.rich_editor.setPlaceholderText(placeholder)
+            max_h = 130 if self.section_key in (SectionKey.CONTACT_INFO, SectionKey.ADDITIONAL_NOTES) else 100
+            self.rich_editor.setMaximumHeight(max_h)
+
+            placeholders = {
+                SectionKey.CONTACT_INFO: "İsteğe bağlı teklif iletişim bilgileri...",
+                SectionKey.DELIVERY_ADDRESS: "Teslimat adresi detayları...",
+                SectionKey.ORDER_NOTIFICATION: "Sipariş ve termin bildirim koşulları...",
+                SectionKey.DELIVERY_METHOD: "Teslimat şekli ve lojistik şartları...",
+                SectionKey.PAYMENT_TERMS: "Ödeme vadesi ve şartları...",
+                SectionKey.STORAGE_CONDITIONS: "Depolama ve muhafaza koşulları...",
+                SectionKey.ADDITIONAL_NOTES: "İsteğe bağlı ek ticari koşul veya özel notlar...",
+            }
+            self.rich_editor.setPlaceholderText(placeholders.get(self.section_key, "Koşul metni girin..."))
             self.toolbar.editor = self.rich_editor
             self.rich_editor.textChanged.connect(self._on_text_changed)
             layout.addWidget(self.rich_editor)
@@ -171,7 +189,8 @@ class SingleSectionCard(QWidget):
 
     def _on_toggled(self, checked: bool) -> None:
         editor = self.rich_editor if self.is_rich_text else self.plain_editor
-        editor.setEnabled(checked)
+        if editor:
+            editor.setEnabled(checked)
 
         if self.toolbar:
             self.toolbar.setEnabled(checked)
@@ -205,16 +224,22 @@ class SingleSectionCard(QWidget):
 
     def get_text(self) -> str:
         if self.is_rich_text and self.rich_editor:
+            plain = self.rich_editor.toPlainText().strip()
+            if not plain:
+                return ""
             return self.rich_editor.toHtml()
         if self.plain_editor:
-            return self.plain_editor.toPlainText()
+            return self.plain_editor.toPlainText().strip()
         return ""
 
     def set_text(self, text: str) -> None:
         if self.is_rich_text and self.rich_editor:
-            self.rich_editor.setHtml(text)
+            if text and text.strip():
+                self.rich_editor.setHtml(text)
+            else:
+                self.rich_editor.clear()
         elif self.plain_editor:
-            self.plain_editor.setPlainText(text)
+            self.plain_editor.setPlainText(text or "")
         self._update_counter()
 
     def to_offer_section(self, position: int = 0) -> OfferSection:

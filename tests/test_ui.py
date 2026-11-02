@@ -245,8 +245,25 @@ def test_to_offer_and_load_offer_symmetry() -> None:
 
 
 def test_sections_widget_and_rich_text() -> None:
-    """Ticari koşullar varsayılan metinleri ve zengin metin araç çubuğu çalışmalıdır."""
+    """Tüm ticari koşullar (Teslimat Adresi, Sipariş Bildirimi, Teslim Şekli, Ödeme Şartları, Depolama Şartları, Ek Alan, İletişim Bilgileri) zengin metin araç çubuğuna sahip olmalıdır."""
     sec_widget = SectionsWidget()
+
+    # Tüm 7 bölümün zengin metin düzenleyicisine ve araç çubuğuna sahip olduğunu doğrula
+    expected_rich_sections = [
+        SectionKey.CONTACT_INFO,
+        SectionKey.DELIVERY_ADDRESS,
+        SectionKey.ORDER_NOTIFICATION,
+        SectionKey.DELIVERY_METHOD,
+        SectionKey.PAYMENT_TERMS,
+        SectionKey.STORAGE_CONDITIONS,
+        SectionKey.ADDITIONAL_NOTES,
+    ]
+    for s_key in expected_rich_sections:
+        card = sec_widget._cards[s_key]
+        assert card.is_rich_text is True
+        assert card.rich_editor is not None
+        assert card.toolbar is not None
+        assert card.plain_editor is None
 
     # Teslimat şekli checkbox açıldığında varsayılan metin yüklenmeli
     addr_card = sec_widget._cards[SectionKey.DELIVERY_METHOD]
@@ -421,7 +438,7 @@ def test_ui_page_orientation_and_copyright() -> None:
     # 1. Copyright ve Sürüm etiketi kontrolü
     assert hasattr(win, "copyright_lbl")
     assert "Berkay Korkut" in win.copyright_lbl.text()
-    assert "v1.4.0" in win.copyright_lbl.text()
+    assert "v1.4.1" in win.copyright_lbl.text()
 
     # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
     assert win.header_widget.get_page_orientation() == PageOrientation.AUTO

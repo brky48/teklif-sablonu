@@ -5,6 +5,56 @@ This document lists the release notes and detailed changes for the Teklif Şablo
 
 ---
 
+## [v1.4.1] - 2026-11-02
+
+### 🇹🇷 Türkçe (Turkish)
+
+#### 🚀 Yeni Özellikler (New Features)
+- **Tüm Ticari Koşul Alanlarına Zengin Metin (Rich Text) Desteği:**
+  - "Ek Alan" ve "Teklif İletişim Bilgileri" alanlarında olduğu gibi, zengin metin araç çubuğu (Kalın, İtalik, Altı Çizili, Madde İmleri ve Numaralı Liste) aşağıdaki 5 ticari koşul alanına da entegre edildi:
+    - **Teslimat Adresi (Delivery Address)**
+    - **Sipariş Bildirimi (Order Notification)**
+    - **Teslim Şekli (Delivery Terms / Method)**
+    - **Ödeme Şartları (Payment Terms)**
+    - **Depolama Şartları (Storage Conditions)**
+  - Her alan için özel açıklayıcı yer tutucu (placeholder) metinleri ve kompakt araç çubuğu düzeni tanımlandı.
+  - Arayüzde `toPlainText()` boş olduğunda temiz boş string dönülerek gereksiz boş HTML etiketlerinin kaydedilmesi önlendi.
+- **PDF ve Excel Çıktı Uyumluluğu:**
+  - PDF çıktısında ticari koşullar tablosuna yazdırılan tüm alanlar `qt_html_to_reportlab` filtresinden geçirilerek `<b>`, `<i>`, `<u>`, `<br/>` ve liste etiketlerinin ReportLab `Paragraph` ile kusursuz biçimde çizilmesi sağlandı.
+  - Excel çıktısında zengin metin etiketleri temizlenerek (`strip_html_tags`) okunabilir ve estetik hücre yerleşimi korundu.
+
+#### 🔧 Arayüz ve Sistem İyileştirmeleri (UI & System)
+- **Merkezi Sürüm Güncellemesi:**
+  - Uygulama sürümü `1.4.1` olarak güncellendi; `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec` ve ana pencere durum çubuğundaki telif alanında eşitlendi.
+- **Test Kapsamı:**
+  - Tüm ticari koşul alanlarının zengin metin desteği, araç çubuğu işlevleri ve PDF çıktısında formatlı metin üretimi test edilerek test süiti **114 başarılı teste** (`114 passed`) ulaştırıldı.
+
+---
+
+### 🇬🇧 English
+
+#### 🚀 New Features
+- **Rich Text Support for All Commercial Terms & Conditions:**
+  - Extended the Rich Text toolbar (Bold, Italic, Underline, Bullet Lists, and Numbered Lists) from "Additional Notes" and "Quotation Contact Information" to all remaining condition sections:
+    - **Delivery Address**
+    - **Order Notification**
+    - **Delivery Method**
+    - **Payment Terms**
+    - **Storage Conditions**
+  - Configured tailored placeholders and compact toolbar buttons for every condition card.
+  - Sanitized text retrieval so that empty rich editors yield a clean empty string instead of boilerplate HTML.
+- **PDF & Excel Document Synchronization:**
+  - In PDF export, all condition rows now parse through `qt_html_to_reportlab`, translating Qt HTML into ReportLab-compatible markup (`<b>`, `<i>`, `<u>`, line breaks, and lists) within `Paragraph` elements.
+  - In Excel export, rich text tags are stripped cleanly to ensure neat, wrapped text across worksheet rows.
+
+#### 🔧 UI & System Improvements
+- **Centralized Version Synchronization:**
+  - Synchronized version `1.4.1` across `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec`, and the status bar copyright text.
+- **Test Suite Expansion:**
+  - Added test cases verifying rich text toolbar availability on all condition fields and formatted multi-element PDF compilation, bringing total passing tests to **114** (`114 passed`).
+
+---
+
 ## [v1.4.0] - 2026-10-29
 
 ### 🇹🇷 Türkçe (Turkish)

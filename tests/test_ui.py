@@ -270,7 +270,7 @@ def test_sections_widget_and_rich_text() -> None:
     assert addr_card.is_enabled() is False
     addr_card.set_enabled(True)
     assert addr_card.is_enabled() is True
-    assert "Tek bir merkezi noktaya" in addr_card.get_text()
+    assert "tek bir merkezi" in addr_card.get_text().lower()
 
     # Teklif İletişim Bilgileri (zengin metin, 5000 karakter, en üstte konuşlu)
     contact_card = sec_widget._cards[SectionKey.CONTACT_INFO]
@@ -438,7 +438,7 @@ def test_ui_page_orientation_and_copyright() -> None:
     # 1. Copyright ve Sürüm etiketi kontrolü
     assert hasattr(win, "copyright_lbl")
     assert "Berkay Korkut" in win.copyright_lbl.text()
-    assert "v1.4.1" in win.copyright_lbl.text()
+    assert "v1.4.2" in win.copyright_lbl.text()
 
     # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
     assert win.header_widget.get_page_orientation() == PageOrientation.AUTO

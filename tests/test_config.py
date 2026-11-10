@@ -78,10 +78,10 @@ def test_load_section_defaults() -> None:
         assert isinstance(sections[key], SectionDefault)
         assert sections[key].max_chars > 0
 
-    # Saklama Koşulları, Ek Alan ve İletişim Bilgileri varsayılan olarak boş başlamalıdır
+    # Saklama Koşulları ve Ek Alan varsayılan olarak boş başlamalıdır; İletişim Bilgileri varsayılan sorumluyu içerebilir
     assert sections["storage_conditions"].default_text == ""
     assert sections["additional_notes"].default_text == ""
-    assert sections["contact_info"].default_text == ""
+    assert "TEKLİF SORUMLUSU" in sections["contact_info"].default_text
     # Ek Alan ve İletişim Bilgileri rich_text desteklemelidir
     assert sections["additional_notes"].rich_text is True
     assert sections["contact_info"].rich_text is True

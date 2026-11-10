@@ -2,7 +2,7 @@
   "sections": {
     "contact_info": {
       "label": "Teklif İletişim Bilgileri",
-      "default_text": "",
+      "default_text": "<b>TEKLİF SORUMLUSU:</b> İbrahim ÖLEMEZ —— +90 (542) 640 85 42<br><b>MÜŞTERİ FİRMA İLGİLİSİ:</b>",
       "max_chars": 5000,
       "rich_text": true
     },
@@ -14,19 +14,19 @@
     },
     "order_notification": {
       "label": "Sipariş Bildirimi",
-      "default_text": "Sipariş 15 gün önceden bildirilmelidir. Teklif geçerlilik süresi 7 gündür.",
+      "default_text": "İşbu teklif, düzenleme tarihinden (gg.aa.yyyy) itibaren 7 (yedi) iş günü geçerlidir. Sevkiyat talepleri, planlanan teslim tarihinden en az 15 (on beş) iş günü önce tarafımıza bildirilmelidir.",
       "max_chars": 3000,
       "rich_text": true
     },
     "delivery_method": {
       "label": "Teslim Şekli",
-      "default_text": "Tek bir merkezi noktaya adres teslimdir.",
+      "default_text": "Ürünler, alıcının belirteceği tek bir merkezi teslimat adresine (tam adresi buraya giriniz) soğuk zincir bozulmayacak şekilde -18 °C frigofirik araçlar ile araç üstü teslim sevk edilecektir.",
       "max_chars": 3000,
       "rich_text": true
     },
     "payment_terms": {
       "label": "Ödeme Şartları",
-      "default_text": "Nakit veya kredi kartı ile ödeme uygundur.",
+      "default_text": "Toplam fatura tutarı peşin olarak satıcının (Endemiks Tarım Tic. A.Ş.) banka hesabına nakden (Banka Havalesi / EFT) ödenecektir.",
       "max_chars": 3000,
       "rich_text": true
     },

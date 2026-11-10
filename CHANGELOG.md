@@ -5,6 +5,40 @@ This document lists the release notes and detailed changes for the Teklif Şablo
 
 ---
 
+## [v1.4.2] - 2026-11-10
+
+### 🇹🇷 Türkçe (Turkish)
+
+#### 📝 İçerik ve Şablon Güncellemeleri (Content & Template Updates)
+- **Varsayılan Ticari Koşul ve İletişim Metinleri Güncellemesi:**
+  - `default_texts.json` dosyasındaki varsayılan koşul metinleri kurumsal gereksinimlere göre güncellendi:
+    - **Teklif İletişim Bilgileri:** Teklif sorumlusu (İbrahim ÖLEMEZ) ve irtibat numarası ile müşteri firma ilgilisi alanı biçimlendirilmiş HTML (`<b>...</b>`, `<br>`) olarak eklendi.
+    - **Sipariş Bildirimi:** Teklif geçerlilik süresi (7 iş günü) ve sevkiyat bildirim süresi (15 iş günü) standart sözleşme diline uyarlandı.
+    - **Teslim Şekli:** Soğuk zincir (-18 °C frigofirik araç üstü teslim) ve teslimat adresi yönergeleri detaylandırıldı.
+    - **Ödeme Şartları:** Peşin banka havalesi / EFT hesap bilgisi şartı eklendi.
+
+#### 🔧 Arayüz ve Sistem İyileştirmeleri (UI & System)
+- **Merkezi Sürüm Güncellemesi:**
+  - Uygulama sürümü `1.4.2` olarak güncellendi; `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec` ve ana pencere durum çubuğu telif alanında eşitlendi.
+
+---
+
+### 🇬🇧 English
+
+#### 📝 Content & Template Updates
+- **Default Commercial Terms & Contact Information Texts Updated:**
+  - Standardized default commercial condition clauses in `default_texts.json`:
+    - **Quotation Contact Information:** Set official sales representative details and contact numbers using rich HTML tags (`<b>...</b>`, `<br>`).
+    - **Order Notification:** Formalized quotation validity (7 business days) and advance shipment notice (15 business days).
+    - **Delivery Terms:** Specified cold chain logistics requirements (-18 °C refrigerated on-truck delivery).
+    - **Payment Terms:** Formalized bank transfer (EFT/Wire) settlement terms.
+
+#### 🔧 UI & System Improvements
+- **Centralized Version Synchronization:**
+  - Synchronized version `1.4.2` across `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec`, and the status bar copyright text.
+
+---
+
 ## [v1.4.1] - 2026-11-02
 
 ### 🇹🇷 Türkçe (Turkish)

@@ -1110,7 +1110,7 @@ class PdfService:
                 pkg_headers = ["Product Size", "Bottles per Shrink Pack", "Shrink Packs", "Bottles per Pallet"]
                 pkg_rows = [
                     ["250 Mililiters", "15 Bottles", "210 Packs", "3150 Bottles"],
-                    ["1 Liter (Round Bottle)", "9 Bottles", "90 Packs", "810 Bottles"],
+                    ["1 Liter (Round Bottle)", "12 Bottles", "60 Packs", "720 Bottles"],
                     ["1 Liter (Square Bottle)", "12 Bottles", "70 Packs", "840 Bottles"],
                     ["2 Liters", "6 Bottles", "64 Packs", "384 Bottles"],
                     ["5 Liters", "8x4 Bottles / 4x2 Bottles", "40 Packs", "160 Bottles"],
@@ -1120,7 +1120,7 @@ class PdfService:
                 pkg_headers = ["Ürün Boyutları", "Paket İçi Şişe Miktarı", "Paket Miktarı", "Paletteki Şişe Miktarı"]
                 pkg_rows = [
                     ["250 Mililitre", "15 Adet", "210 Paket", "3150 Adet"],
-                    ["1 Litre (Yuvarlak Şişe)", "9 Adet", "90 Paket", "810 Adet"],
+                    ["1 Litre (Yuvarlak Şişe)", "12 Adet", "60 Paket", "720 Adet"],
                     ["1 Litre (Kare Şişe)", "12 Adet", "70 Paket", "840 Adet"],
                     ["2 Litre", "6 Adet", "64 Paket", "384 Adet"],
                     ["5 Litre", "8x4 Adet / 4x2 Adet", "40 Paket", "160 Adet"],

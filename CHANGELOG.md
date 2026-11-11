@@ -5,6 +5,40 @@ This document lists the release notes and detailed changes for the Teklif Şablo
 
 ---
 
+## [v1.4.3] - 2026-11-11
+
+### 🇹🇷 Türkçe (Turkish)
+
+#### 📝 İçerik ve Şablon Güncellemeleri (Content & Template Updates)
+- **Paketleme Bilgileri Tablosu Güncellemesi (1 Litre Yuvarlak Şişe):**
+  - "1 Litre (Yuvarlak Şişe)" ürün satırındaki ambalaj ve lojistik değerleri güncellendi:
+    - **Paket İçi Şişe Miktarı:** `9 Adet` yerine `12 Adet` yapıldı.
+    - **Paket Miktarı:** `90 Paket` yerine `60 Paket` yapıldı.
+    - **Paletteki Şişe Miktarı:** `810 Adet` yerine `720 Adet` yapıldı.
+  - Değişiklik hem Türkçe hem de İngilizce PDF şablonlarına ("1 Liter (Round Bottle)" -> 12 Bottles, 60 Packs, 720 Bottles) yansıtıldı.
+
+#### 🔧 Arayüz ve Sistem İyileştirmeleri (UI & System)
+- **Merkezi Sürüm Güncellemesi:**
+  - Uygulama sürümü `1.4.3` olarak güncellendi; `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec` ve ana pencere durum çubuğundaki telif alanında eşitlendi.
+
+---
+
+### 🇬🇧 English
+
+#### 📝 Content & Template Updates
+- **Packaging Information Table Updated (1 Liter Round Bottle):**
+  - Updated logistics and packaging specifications for the "1 Liter (Round Bottle)" item:
+    - **Bottles per Shrink Pack:** Updated from `9 Bottles` to `12 Bottles` (12 Adet).
+    - **Shrink Packs per Pallet:** Updated from `90 Packs` to `60 Packs` (60 Paket).
+    - **Bottles per Pallet:** Updated from `810 Bottles` to `720 Bottles` (720 Adet).
+  - Applied across both Turkish and English PDF ready template generators.
+
+#### 🔧 UI & System Improvements
+- **Centralized Version Synchronization:**
+  - Synchronized version `1.4.3` across `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec`, and the status bar copyright text.
+
+---
+
 ## [v1.4.2] - 2026-11-10
 
 ### 🇹🇷 Türkçe (Turkish)

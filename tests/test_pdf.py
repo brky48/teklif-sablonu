@@ -379,6 +379,14 @@ def test_pdf_ready_templates_page_count_and_content(pdf_service: PdfService, tmp
     assert "*Ürünler çözündükten sonra buzdolabı sıcaklığında (+4°C’de) muhafaza edilmelidir." in tr_text
     assert "*Ürün çözündükten sonra tekrar dondurmayınız." in tr_text
 
+    from reportlab.platypus import Table
+    pkg_table_tr = next(el for el in tr_elements if isinstance(el, Table) and len(el._colWidths) == 4)
+    row_tr = [getattr(c, "text", str(c)) for c in pkg_table_tr._cellvalues[2]]
+    assert "1 Litre (Yuvarlak Şişe)" in row_tr[0]
+    assert "12 Adet" in row_tr[1]
+    assert "60 Paket" in row_tr[2]
+    assert "720 Adet" in row_tr[3]
+
     # 3. İngilizce versiyon: Paketleme ve Muhafaza açık -> 2 sayfa
     offer_en = Offer(
         offer_number="20261026-T3",
@@ -403,6 +411,13 @@ def test_pdf_ready_templates_page_count_and_content(pdf_service: PdfService, tmp
     assert "*The 80 × 120 cm pallet size is used as a reference." in en_text
     assert "*After thawing, products must be stored at +4°C." in en_text
     assert "*Do not refreeze after thawing." in en_text
+
+    pkg_table_en = next(el for el in en_elements if isinstance(el, Table) and len(el._colWidths) == 4)
+    row_en = [getattr(c, "text", str(c)) for c in pkg_table_en._cellvalues[2]]
+    assert "1 Liter (Round Bottle)" in row_en[0]
+    assert "12 Bottles" in row_en[1]
+    assert "60 Packs" in row_en[2]
+    assert "720 Bottles" in row_en[3]
 
     from reportlab.platypus import Table
     stg_table = next(el for el in en_elements if isinstance(el, Table) and len(el._colWidths) == 10)

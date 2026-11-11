@@ -438,7 +438,7 @@ def test_ui_page_orientation_and_copyright() -> None:
     # 1. Copyright ve Sürüm etiketi kontrolü
     assert hasattr(win, "copyright_lbl")
     assert "Berkay Korkut" in win.copyright_lbl.text()
-    assert "v1.4.2" in win.copyright_lbl.text()
+    assert "v1.4.3" in win.copyright_lbl.text()
 
     # 2. Sayfa yönü combo varsayılanı ve değiştirilmesi
     assert win.header_widget.get_page_orientation() == PageOrientation.AUTO

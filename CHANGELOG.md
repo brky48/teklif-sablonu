@@ -5,6 +5,40 @@ This document lists the release notes and detailed changes for the Teklif Şablo
 
 ---
 
+## [v1.4.4] - 2026-11-18
+
+### 🇹🇷 Türkçe (Turkish)
+
+#### 🚀 Yeni Özellikler (New Features)
+- **Miktar Birimi Seçeneklerine "Kilogram" Eklendi:**
+  - Teklif üst bilgi panelindeki "Miktar Birimi" radyo düğmesi seçeneklerine **Kilogram** eklendi (Adet / Litre / Kilogram).
+  - Teklif Edilen Ürünler tablosunda, PDF çıktısında ve Excel tablosunda sütun başlığı:
+    - Türkçe için: `Miktar (Kilogram)`
+    - İngilizce için: `Quantity (Kilograms)`
+    olarak yapılandırıldı.
+
+#### 🔧 Arayüz ve Sistem İyileştirmeleri (UI & System)
+- **Merkezi Sürüm Güncellemesi:**
+  - Uygulama sürümü `1.4.4` olarak güncellendi; `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec` ve ana pencere durum çubuğundaki telif alanında eşitlendi.
+
+---
+
+### 🇬🇧 English
+
+#### 🚀 New Features
+- **Added "Kilogram" to Quantity Unit Options:**
+  - Added **Kilogram** to the Quantity Unit radio button selection in the Header panel (Piece / Liter / Kilogram).
+  - Updated table and document headers for the quantity column:
+    - In Turkish: `Miktar (Kilogram)`
+    - In English: `Quantity (Kilograms)`
+    applied across UI tables, PDF generator, and Excel exports.
+
+#### 🔧 UI & System Improvements
+- **Centralized Version Synchronization:**
+  - Synchronized version `1.4.4` across `__init__.py`, `pyproject.toml`, `version_info.txt`, `teklif_sablonu.spec`, and the status bar copyright text.
+
+---
+
 ## [v1.4.3] - 2026-11-11
 
 ### 🇹🇷 Türkçe (Turkish)

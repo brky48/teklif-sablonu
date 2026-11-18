@@ -13,6 +13,7 @@ from teklif_sablonu.domain.enums import (
     ColumnKey,
     CurrencyCode,
     DiscountType,
+    DocumentLanguage,
     QuantityUnit,
     SectionKey,
 )
@@ -315,3 +316,39 @@ def test_excel_without_total_amount_unit_price_mode(excel_service: ExcelService,
     assert "Ara Toplam:" not in all_values
     assert "Genel Toplam:" not in all_values
     assert "Toplam Tutar" not in [str(v) for v in all_values]
+
+
+def test_excel_export_quantity_unit_kilogram(tmp_path: Path) -> None:
+    """Excel çıktısında Kilogram birim başlıkları TR ve EN için doğru yazılmalıdır."""
+    svc = ExcelService()
+
+    # Türkçe
+    offer_tr = Offer(
+        offer_number="20261118-E1",
+        offer_date=date(2026, 11, 18),
+        document_language=DocumentLanguage.TR,
+        quantity_unit=QuantityUnit.KILOGRAM,
+        items=[OfferItem(description="Ürün", quantity=Decimal("100"), unit_price=Decimal("10"))],
+    )
+    p_tr = tmp_path / "tr_kg.xlsx"
+    svc.generate_excel(offer_tr, p_tr)
+    wb_tr = openpyxl.load_workbook(p_tr)
+    ws_tr = wb_tr.active
+    values_tr = [cell.value for row in ws_tr.iter_rows() for cell in row if cell.value is not None]
+    assert "Miktar (Kilogram)" in values_tr
+
+    # İngilizce
+    offer_en = Offer(
+        offer_number="20261118-E2",
+        offer_date=date(2026, 11, 18),
+        document_language=DocumentLanguage.EN,
+        quantity_unit=QuantityUnit.KILOGRAM,
+        items=[OfferItem(description="Item", quantity=Decimal("100"), unit_price=Decimal("10"))],
+    )
+    p_en = tmp_path / "en_kg.xlsx"
+    svc.generate_excel(offer_en, p_en)
+    wb_en = openpyxl.load_workbook(p_en)
+    ws_en = wb_en.active
+    values_en = [cell.value for row in ws_en.iter_rows() for cell in row if cell.value is not None]
+    assert "Quantity (Kilograms)" in values_en
+

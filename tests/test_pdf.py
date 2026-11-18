@@ -881,4 +881,43 @@ def test_pdf_commercial_conditions_rich_text(pdf_service: PdfService, tmp_path: 
     assert doc.pageCount() >= 1
 
 
+def test_pdf_quantity_unit_kilogram(pdf_service: PdfService, tmp_path: Path) -> None:
+    """Kilogram miktar birimi seçildiğinde tablo başlığı TR ve EN için doğru oluşturulmalıdır."""
+    from teklif_sablonu.domain.calculator import calculate_offer
+
+    # Türkçe Testi
+    offer_tr = Offer(
+        offer_number="20261118-KG1",
+        offer_date=date(2026, 11, 18),
+        document_language=DocumentLanguage.TR,
+        quantity_unit=QuantityUnit.KILOGRAM,
+        items=[OfferItem(description="Taze Nar", quantity=Decimal("500"), unit_price=Decimal("25.00"))],
+    )
+    cols = pdf_service.filter_visible_columns(offer_tr, offer_tr.items)
+    calcs, _ = calculate_offer(offer_tr)
+    table_tr = pdf_service._build_items_table(offer_tr, offer_tr.items, calcs, cols, 500)
+    header_texts_tr = [c.text for c in table_tr._cellvalues[0]]
+    assert any("MİKTAR (KİLOGRAM)" in t or "Miktar (Kilogram)".upper() in t for t in header_texts_tr)
+
+    # İngilizce Testi
+    offer_en = Offer(
+        offer_number="20261118-KG2",
+        offer_date=date(2026, 11, 18),
+        document_language=DocumentLanguage.EN,
+        quantity_unit=QuantityUnit.KILOGRAM,
+        items=[OfferItem(description="Fresh Pomegranate", quantity=Decimal("500"), unit_price=Decimal("25.00"))],
+    )
+    cols_en = pdf_service.filter_visible_columns(offer_en, offer_en.items)
+    calcs_en, _ = calculate_offer(offer_en)
+    table_en = pdf_service._build_items_table(offer_en, offer_en.items, calcs_en, cols_en, 500)
+    header_texts_en = [c.text for c in table_en._cellvalues[0]]
+    assert any("QUANTITY (KILOGRAMS)" in t for t in header_texts_en)
+
+    # PDF Dosyası Oluşturma
+    pdf_path = tmp_path / "test_kg.pdf"
+    res = pdf_service.generate_pdf(offer_en, pdf_path)
+    assert res.exists()
+
+
+
 

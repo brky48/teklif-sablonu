@@ -98,17 +98,20 @@ class HeaderWidget(QWidget):
         self.curr_btn_group.idToggled.connect(self._on_currency_toggled)
         grid.addLayout(curr_layout, 2, 1)
 
-        # 5. Miktar Birimi (Teklif Genelinde Tek Seçim: Adet / Litre)
+        # 5. Miktar Birimi (Teklif Genelinde Tek Seçim: Adet / Litre / Kilogram)
         grid.addWidget(QLabel("Miktar Birimi:"), 2, 2)
         unit_layout = QHBoxLayout()
         self.unit_btn_group = QButtonGroup(self)
         self.rb_piece = QRadioButton("Adet")
         self.rb_litre = QRadioButton("Litre")
+        self.rb_kg = QRadioButton("Kilogram")
         self.rb_piece.setChecked(True)
         self.unit_btn_group.addButton(self.rb_piece, 0)
         self.unit_btn_group.addButton(self.rb_litre, 1)
+        self.unit_btn_group.addButton(self.rb_kg, 2)
         unit_layout.addWidget(self.rb_piece)
         unit_layout.addWidget(self.rb_litre)
+        unit_layout.addWidget(self.rb_kg)
         unit_layout.addStretch()
         self.unit_btn_group.idToggled.connect(self._on_unit_toggled)
         grid.addLayout(unit_layout, 2, 3)
@@ -253,11 +256,15 @@ class HeaderWidget(QWidget):
     def get_quantity_unit(self) -> QuantityUnit:
         if self.rb_litre.isChecked():
             return QuantityUnit.LITRE
+        if self.rb_kg.isChecked():
+            return QuantityUnit.KILOGRAM
         return QuantityUnit.PIECE
 
     def set_quantity_unit(self, unit: QuantityUnit) -> None:
         if unit == QuantityUnit.LITRE:
             self.rb_litre.setChecked(True)
+        elif unit == QuantityUnit.KILOGRAM:
+            self.rb_kg.setChecked(True)
         else:
             self.rb_piece.setChecked(True)
 

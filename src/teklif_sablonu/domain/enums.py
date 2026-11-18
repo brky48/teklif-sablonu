@@ -38,6 +38,7 @@ class QuantityUnit(str, Enum):
 
     PIECE = "piece"
     LITRE = "litre"
+    KILOGRAM = "kilogram"
 
     @property
     def label_tr(self) -> str:
@@ -47,6 +48,8 @@ class QuantityUnit(str, Enum):
         is_en = (lang == DocumentLanguage.EN or lang == "en")
         if self == QuantityUnit.LITRE:
             return "Liter" if is_en else "Litre"
+        elif self == QuantityUnit.KILOGRAM:
+            return "Kilogram"
         return "Piece" if is_en else "Adet"
 
     @property
@@ -55,6 +58,8 @@ class QuantityUnit(str, Enum):
 
     def get_column_header(self, lang: DocumentLanguage | str = DocumentLanguage.TR) -> str:
         is_en = (lang == DocumentLanguage.EN or lang == "en")
+        if self == QuantityUnit.KILOGRAM:
+            return "Quantity (Kilograms)" if is_en else "Miktar (Kilogram)"
         lbl = self.label(lang)
         return f"Quantity ({lbl})" if is_en else f"Miktar ({lbl})"
 

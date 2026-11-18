@@ -243,6 +243,8 @@ def test_enums_and_models_helpers() -> None:
     assert QuantityUnit.PIECE.column_header == "Miktar (Adet)"
     assert QuantityUnit.LITRE.label_tr == "Litre"
     assert QuantityUnit.LITRE.column_header == "Miktar (Litre)"
+    assert QuantityUnit.KILOGRAM.label_tr == "Kilogram"
+    assert QuantityUnit.KILOGRAM.column_header == "Miktar (Kilogram)"
 
     assert DiscountType.NONE.label_tr == "Yok"
     assert DiscountType.RATE.label_tr == "Oran"

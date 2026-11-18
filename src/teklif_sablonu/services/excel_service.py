@@ -596,7 +596,7 @@ class ExcelService:
             headers: dict[ColumnKey, str] = {
                 ColumnKey.PRODUCT_CODE: "Product Code",
                 ColumnKey.DESCRIPTION: "Description",
-                ColumnKey.QUANTITY: f"Quantity ({unit_val})",
+                ColumnKey.QUANTITY: offer.quantity_unit.get_column_header(offer.document_language),
                 ColumnKey.PALLET: "Pallet",
                 ColumnKey.UNIT_PRICE: f"Unit Price ({curr_sym})",
                 ColumnKey.DISCOUNT_TYPE: "Discount Type",
@@ -610,7 +610,7 @@ class ExcelService:
             headers = {
                 ColumnKey.PRODUCT_CODE: "Ürün Kodu",
                 ColumnKey.DESCRIPTION: "Ürün Açıklaması",
-                ColumnKey.QUANTITY: f"Miktar ({unit_val})",
+                ColumnKey.QUANTITY: offer.quantity_unit.get_column_header(offer.document_language),
                 ColumnKey.PALLET: "Palet",
                 ColumnKey.UNIT_PRICE: f"Birim Fiyat ({curr_sym})",
                 ColumnKey.DISCOUNT_TYPE: "İskonto Türü",

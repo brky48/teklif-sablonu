@@ -41,6 +41,10 @@ def test_document_language_enum_and_labels():
     assert QuantityUnit.PIECE.label(DocumentLanguage.EN) == "Piece"
     assert QuantityUnit.LITRE.label(DocumentLanguage.EN) == "Liter"
     assert QuantityUnit.PIECE.get_column_header(DocumentLanguage.EN) == "Quantity (Piece)"
+    assert QuantityUnit.KILOGRAM.label(DocumentLanguage.TR) == "Kilogram"
+    assert QuantityUnit.KILOGRAM.label(DocumentLanguage.EN) == "Kilogram"
+    assert QuantityUnit.KILOGRAM.get_column_header(DocumentLanguage.TR) == "Miktar (Kilogram)"
+    assert QuantityUnit.KILOGRAM.get_column_header(DocumentLanguage.EN) == "Quantity (Kilograms)"
 
     # İskonto tipi
     assert DiscountType.RATE.label(DocumentLanguage.EN) == "Rate"
